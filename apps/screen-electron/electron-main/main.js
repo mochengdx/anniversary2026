@@ -21,6 +21,8 @@ function createWindow() {
     },
   });
 
+  mainWindow.maximize(); // 默认最大化窗口
+
   if (isDev) {
     mainWindow.loadURL('http://localhost:5174');
     mainWindow.webContents.openDevTools();
