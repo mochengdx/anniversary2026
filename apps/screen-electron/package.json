@@ -1,0 +1,33 @@
+{
+  "name": "@app/screen-electron",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "main": "electron-main/main.js",
+  "scripts": {
+    "dev": "concurrently \"vite\" \"wait-on http://localhost:5174 && electron .\"",
+    "dev:renderer": "vite",
+    "build": "tsc -b && vite build",
+    "electron:start": "electron ."
+  },
+  "dependencies": {
+    "@pkg/shared-types": "workspace:*",
+    "@pkg/utils": "workspace:*",
+    "react": "^19.0.0",
+    "react-dom": "^19.0.0",
+    "socket.io-client": "^4.8.1",
+    "three": "^0.172.0",
+    "gsap": "^3.12.7"
+  },
+  "devDependencies": {
+    "@types/react": "^19.0.8",
+    "@types/react-dom": "^19.0.3",
+    "@types/three": "^0.172.0",
+    "@vitejs/plugin-react": "^4.3.4",
+    "concurrently": "^9.1.2",
+    "electron": "^34.0.0",
+    "typescript": "^5.7.3",
+    "vite": "^6.1.0",
+    "wait-on": "^8.0.2"
+  }
+}
