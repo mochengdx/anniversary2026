@@ -1,0 +1,157 @@
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+html, body {
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  background: linear-gradient(135deg, #0f0c29, #302b63, #24243e);
+  color: #fff;
+}
+
+#root {
+  width: 100%;
+  height: 100%;
+}
+
+.app {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  height: 100%;
+  padding: 20px;
+  gap: 16px;
+}
+
+.app h1 {
+  font-size: 24px;
+  text-align: center;
+  background: linear-gradient(90deg, #ff6fd8, #3813c2);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+}
+
+.status {
+  font-size: 12px;
+  padding: 4px 12px;
+  border-radius: 12px;
+  background: rgba(255,255,255,0.1);
+}
+
+.status.connected { color: #4ade80; }
+.status.disconnected { color: #f87171; }
+
+.tab-bar {
+  display: flex;
+  gap: 8px;
+}
+
+.tab-bar button {
+  padding: 8px 20px;
+  border: 1px solid rgba(255,255,255,0.2);
+  background: transparent;
+  color: #fff;
+  border-radius: 20px;
+  font-size: 14px;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.tab-bar button.active {
+  background: linear-gradient(90deg, #ff6fd8, #3813c2);
+  border-color: transparent;
+}
+
+.panel {
+  width: 100%;
+  max-width: 400px;
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  overflow-y: auto;
+}
+
+.blessing-input {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.blessing-input textarea {
+  width: 100%;
+  min-height: 100px;
+  padding: 12px;
+  border-radius: 12px;
+  border: 1px solid rgba(255,255,255,0.2);
+  background: rgba(255,255,255,0.05);
+  color: #fff;
+  font-size: 16px;
+  resize: none;
+}
+
+.btn-primary {
+  padding: 14px;
+  border: none;
+  border-radius: 12px;
+  background: linear-gradient(90deg, #ff6fd8, #3813c2);
+  color: #fff;
+  font-size: 16px;
+  font-weight: bold;
+  cursor: pointer;
+  transition: transform 0.1s;
+}
+
+.btn-primary:active {
+  transform: scale(0.96);
+}
+
+.shake-area {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  flex: 1;
+  gap: 16px;
+}
+
+.shake-score {
+  font-size: 64px;
+  font-weight: bold;
+  background: linear-gradient(90deg, #f97316, #eab308);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+}
+
+.shake-hint {
+  font-size: 14px;
+  opacity: 0.6;
+}
+
+.lottery-join-box {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  gap: 14px;
+  padding: 16px;
+  border-radius: 14px;
+  border: 1px solid rgba(255,255,255,0.16);
+  background: rgba(255,255,255,0.05);
+}
+
+.lottery-join-box h3 {
+  font-size: 20px;
+  background: linear-gradient(90deg, #f59e0b, #f43f5e, #a855f7);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+}
+
+.lottery-join-box p {
+  font-size: 14px;
+  opacity: 0.85;
+}
