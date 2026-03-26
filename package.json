@@ -1,0 +1,26 @@
+{
+  "name": "interactive-event-app",
+  "version": "1.0.0",
+  "private": true,
+  "description": "大屏互动系统 - 年会/展会高频互动场景",
+  "scripts": {
+    "dev:server": "pnpm --filter @app/server dev",
+    "dev:h5": "pnpm --filter @app/h5-client dev",
+    "dev:screen": "pnpm --filter @app/screen-electron dev",
+    "build:shared": "pnpm --filter @pkg/shared-types build && pnpm --filter @pkg/utils build",
+    "build:server": "pnpm --filter @app/server build",
+    "build:h5": "pnpm --filter @app/h5-client build",
+    "build:screen": "pnpm --filter @app/screen-electron build",
+    "build:all": "pnpm run build:shared && pnpm run build:server && pnpm run build:h5 && pnpm run build:screen",
+    "dev": "concurrently \"pnpm dev:server\" \"pnpm dev:h5\" \"pnpm dev:screen\"",
+    "clean": "rm -rf node_modules packages/*/dist apps/*/dist apps/*/node_modules packages/*/node_modules"
+  },
+  "devDependencies": {
+    "concurrently": "^9.1.2",
+    "typescript": "^5.7.3"
+  },
+  "engines": {
+    "node": ">=18.0.0",
+    "pnpm": ">=9.0.0"
+  }
+}
