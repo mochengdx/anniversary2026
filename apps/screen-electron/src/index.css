@@ -19,33 +19,43 @@ html, body, #root {
   height: 100%;
 }
 
-/* Nav */
-.screen-nav {
+/* Nav Right */
+.screen-nav-right {
   position: absolute;
-  top: 20px;
-  left: 50%;
-  transform: translateX(-50%);
+  top: 50%;
+  right: 20px;
+  transform: translateY(-50%);
   z-index: 100;
   display: flex;
-  gap: 12px;
+  flex-direction: column;
+  gap: 16px;
 }
 
-.screen-nav button {
-  padding: 10px 28px;
-  border: 1px solid rgba(255,255,255,0.3);
-  background: rgba(0,0,0,0.5);
+.screen-nav-right button {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 48px;
+  height: 48px;
+  border: 1px solid rgba(255,255,255,0.2);
+  background: rgba(0,0,0,0.4);
   backdrop-filter: blur(10px);
-  color: #fff;
-  border-radius: 24px;
-  font-size: 16px;
+  color: rgba(255,255,255,0.7);
+  border-radius: 50%;
   cursor: pointer;
   transition: all 0.3s;
 }
 
-.screen-nav button.active {
-  background: linear-gradient(90deg, #ff6fd8, #3813c2);
+.screen-nav-right button:hover {
+  background: rgba(255,255,255,0.1);
+  color: #fff;
+}
+
+.screen-nav-right button.active {
+  background: linear-gradient(135deg, #f97316, #9333ea);
   border-color: transparent;
-  box-shadow: 0 4px 20px rgba(255,111,216,0.4);
+  color: #fff;
+  box-shadow: 0 4px 16px rgba(147, 51, 234, 0.4);
 }
 
 /* Three.js canvas */
