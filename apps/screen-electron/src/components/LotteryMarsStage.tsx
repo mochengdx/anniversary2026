@@ -161,6 +161,7 @@ export function LotteryMarsStage({ users, blessingsCount }: Props) {
     scene.add(pointLight);
 
     const planetGroup = new THREE.Group();
+    planetGroup.position.set(0, -80, 0); // Leave some space at the top (shift the whole planet down)
     planetGroupRef.current = planetGroup;
 
     const coreGeo = new THREE.SphereGeometry(450, 32, 32);
