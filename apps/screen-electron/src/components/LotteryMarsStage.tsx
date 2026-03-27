@@ -40,41 +40,65 @@ function getDemoUsers(count = 120): UserInfo[] {
 
 function createCardTexture(user: UserInfo): THREE.Texture {
   const canvas = document.createElement('canvas');
-  canvas.width = 256;
-  canvas.height = 140;
+  // Enhance resolution for sharper render
+  canvas.width = 512;
+  canvas.height = 280;
   const ctx = canvas.getContext('2d');
   if (!ctx) return new THREE.Texture();
 
-  const themes = [
-    { border: '#FFFFFF', background: '#0C4A6E' },
-    { border: '#FFFFFF', background: '#1D4ED8' },
-    { border: '#FFFFFF', background: '#7C3AED' },
-    { border: '#FFFFFF', background: '#B45309' },
-  ];
-  const theme = themes[Math.floor(Math.random() * themes.length)];
+  // "Celestial Core" glassmorphism colors
+  const surfaceHigh = 'rgba(29, 29, 56, 1)';
+  const primaryGlow = 'rgba(197, 154, 255, 0.4)';
+  const outlineVariant = 'rgba(255, 255, 255, 0.1)';
 
-  ctx.fillStyle = theme.background;
-  ctx.strokeStyle = theme.border;
-  ctx.lineWidth = 4;
+  // Draw rounded base
+  ctx.fillStyle = surfaceHigh;
+  const pad = 8;
+  const rad = 28;
+  const w = canvas.width - pad * 2;
+  const h = canvas.height - pad * 2;
+  
   ctx.beginPath();
-  if (ctx.roundRect) ctx.roundRect(5, 5, 246, 130, 14);
-  else ctx.rect(5, 5, 246, 130);
+  if (ctx.roundRect) ctx.roundRect(pad, pad, w, h, rad);
+  else ctx.rect(pad, pad, w, h);
   ctx.fill();
+
+  // Draw inner glow
+  const gradient = ctx.createLinearGradient(pad, pad, pad, pad + h);
+  gradient.addColorStop(0, primaryGlow);
+  gradient.addColorStop(1, 'transparent');
+  ctx.fillStyle = gradient;
+  ctx.fill();
+
+  // Draw border (ghost border)
+  ctx.strokeStyle = outlineVariant;
+  ctx.lineWidth = 3;
   ctx.stroke();
 
-  ctx.fillStyle = '#F5F3FF';
-  ctx.font = 'bold 22px sans-serif';
-  ctx.fillText(user.nickname.slice(0, 8), 100, 60);
+  // Render Name
+  ctx.fillStyle = '#FFFFFF';
+  ctx.font = 'bold 36px "Epilogue", sans-serif';
+  ctx.textAlign = 'center';
+  ctx.textBaseline = 'middle';
+  const displayId = `ID_${user.userId.slice(0, 4)}`;
+  // We place id/name
+  ctx.fillText(user.nickname || displayId, canvas.width / 2, canvas.height / 2 + 20);
 
-  ctx.fillStyle = '#C4B5FD';
-  ctx.font = '16px sans-serif';
-  ctx.fillText(`ID: ${user.userId.slice(0, 4)}***`, 100, 90);
-
+  // Avatar Circle
+  const avRange = 60;
   ctx.beginPath();
-  ctx.arc(58, 70, 34, 0, Math.PI * 2);
-  ctx.strokeStyle = '#FFFFFF';
-  ctx.lineWidth = 2;
+  ctx.arc(canvas.width / 2, canvas.height / 2 - 40, avRange, 0, Math.PI * 2);
+  ctx.fillStyle = 'rgba(197, 154, 255, 0.1)';
+  ctx.fill();
+  ctx.strokeStyle = '#c59aff';
+  ctx.lineWidth = 4;
   ctx.stroke();
+
+  // Shorten id top right
+  ctx.fillStyle = '#00e3fd';
+  ctx.font = 'bold 24px "Space Grotesk", sans-serif';
+  ctx.textAlign = 'right';
+  ctx.fillText(displayId, canvas.width - 24, 46);
 
   const tex = new THREE.CanvasTexture(canvas);
   tex.colorSpace = THREE.SRGBColorSpace;
@@ -84,9 +108,12 @@ function createCardTexture(user: UserInfo): THREE.Texture {
   img.onload = () => {
     ctx.save();
     ctx.beginPath();
-    ctx.arc(58, 70, 34, 0, Math.PI * 2);
+    // Avatar Circle position needs to match the previously drawn circle
+    const avX = canvas.width / 2;
+    const avY = canvas.height / 2 - 40;
+    ctx.arc(avX, avY, avRange, 0, Math.PI * 2);
     ctx.clip();
-    ctx.drawImage(img, 24, 36, 68, 68);
+    ctx.drawImage(img, avX - avRange, avY - avRange, avRange * 2, avRange * 2);
     ctx.restore();
     ctx.beginPath();
     ctx.arc(58, 70, 34, 0, Math.PI * 2);

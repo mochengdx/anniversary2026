@@ -1,0 +1,26 @@
+:root {
+  /* Colors - Core Palette */
+  --color-primary: #c59aff;
+  --color-primary-dim: #9b6be2;
+  --color-primary-container: rgba(197, 154, 255, 0.2);
+  
+  --color-secondary: #00e3fd;
+  --color-tertiary: #ffe483;
+  --color-background: #0c0c1d;
+
+  /* Surfaces */
+  --surface: #0c0c1d;
+  --surface-container-low: #121223;
+  --surface-container-highest: #24233b;
+  --surface-bright: rgba(42, 42, 67, 0.6);
+  --on-surface: rgba(255, 255, 255, 1);
+  --on-surface-variant: rgba(255, 255, 255, 0.7);
+  
+  /* Borders */
+  --outline-variant: rgba(255, 255, 255, 0.15);
+
+  /* Fonts */
+  --font-display: 'Epilogue', sans-serif;
+  --font-body: 'Manrope', sans-serif;
+  --font-mono: 'Space Grotesk', monospace;
+}

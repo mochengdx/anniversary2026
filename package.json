@@ -22,5 +22,6 @@
   "engines": {
     "node": ">=18.0.0",
     "pnpm": ">=9.0.0"
-  }
+  },
+  "repository": "https://github.com/mochengdx/anniversary2026.git"
 }
