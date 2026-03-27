@@ -40,65 +40,41 @@ function getDemoUsers(count = 120): UserInfo[] {
 
 function createCardTexture(user: UserInfo): THREE.Texture {
   const canvas = document.createElement('canvas');
-  // Enhance resolution for sharper render
-  canvas.width = 512;
-  canvas.height = 280;
+  canvas.width = 256;
+  canvas.height = 140;
   const ctx = canvas.getContext('2d');
   if (!ctx) return new THREE.Texture();
 
-  // "Celestial Core" glassmorphism colors
-  const surfaceHigh = 'rgba(29, 29, 56, 1)';
-  const primaryGlow = 'rgba(197, 154, 255, 0.4)';
-  const outlineVariant = 'rgba(255, 255, 255, 0.1)';
+  const themes = [
+    { border: '#FFFFFF', background: '#0C4A6E' },
+    { border: '#FFFFFF', background: '#1D4ED8' },
+    { border: '#FFFFFF', background: '#7C3AED' },
+    { border: '#FFFFFF', background: '#B45309' },
+  ];
+  const theme = themes[Math.floor(Math.random() * themes.length)];
 
-  // Draw rounded base
-  ctx.fillStyle = surfaceHigh;
-  const pad = 8;
-  const rad = 28;
-  const w = canvas.width - pad * 2;
-  const h = canvas.height - pad * 2;
-  
-  ctx.beginPath();
-  if (ctx.roundRect) ctx.roundRect(pad, pad, w, h, rad);
-  else ctx.rect(pad, pad, w, h);
-  ctx.fill();
-
-  // Draw inner glow
-  const gradient = ctx.createLinearGradient(pad, pad, pad, pad + h);
-  gradient.addColorStop(0, primaryGlow);
-  gradient.addColorStop(1, 'transparent');
-  ctx.fillStyle = gradient;
-  ctx.fill();
-
-  // Draw border (ghost border)
-  ctx.strokeStyle = outlineVariant;
-  ctx.lineWidth = 3;
-  ctx.stroke();
-
-  // Render Name
-  ctx.fillStyle = '#FFFFFF';
-  ctx.font = 'bold 36px "Epilogue", sans-serif';
-  ctx.textAlign = 'center';
-  ctx.textBaseline = 'middle';
-  const displayId = `ID_${user.userId.slice(0, 4)}`;
-  // We place id/name
-  ctx.fillText(user.nickname || displayId, canvas.width / 2, canvas.height / 2 + 20);
-
-  // Avatar Circle
-  const avRange = 60;
-  ctx.beginPath();
-  ctx.arc(canvas.width / 2, canvas.height / 2 - 40, avRange, 0, Math.PI * 2);
-  ctx.fillStyle = 'rgba(197, 154, 255, 0.1)';
-  ctx.fill();
-  ctx.strokeStyle = '#c59aff';
+  ctx.fillStyle = theme.background;
+  ctx.strokeStyle = theme.border;
   ctx.lineWidth = 4;
+  ctx.beginPath();
+  if (ctx.roundRect) ctx.roundRect(5, 5, 246, 130, 14);
+  else ctx.rect(5, 5, 246, 130);
+  ctx.fill();
   ctx.stroke();
 
-  // Shorten id top right
-  ctx.fillStyle = '#00e3fd';
-  ctx.font = 'bold 24px "Space Grotesk", sans-serif';
-  ctx.textAlign = 'right';
-  ctx.fillText(displayId, canvas.width - 24, 46);
+  ctx.fillStyle = '#F5F3FF';
+  ctx.font = 'bold 22px sans-serif';
+  ctx.fillText(user.nickname.slice(0, 8), 100, 60);
+
+  ctx.fillStyle = '#C4B5FD';
+  ctx.font = '16px sans-serif';
+  ctx.fillText(`ID: ${user.userId.slice(0, 4)}***`, 100, 90);
+
+  ctx.beginPath();
+  ctx.arc(58, 70, 34, 0, Math.PI * 2);
+  ctx.strokeStyle = '#FFFFFF';
+  ctx.lineWidth = 2;
+  ctx.stroke();
 
   const tex = new THREE.CanvasTexture(canvas);
   tex.colorSpace = THREE.SRGBColorSpace;
@@ -108,18 +84,10 @@ function createCardTexture(user: UserInfo): THREE.Texture {
   img.onload = () => {
     ctx.save();
     ctx.beginPath();
-    // Avatar Circle position needs to match the previously drawn circle
-    const avX = canvas.width / 2;
-    const avY = canvas.height / 2 - 40;
-    ctx.arc(avX, avY, avRange, 0, Math.PI * 2);
-    ctx.clip();
-    ctx.drawImage(img, avX - avRange, avY - avRange, avRange * 2, avRange * 2);
-    ctx.restore();
-    ctx.beginPath();
     ctx.arc(58, 70, 34, 0, Math.PI * 2);
-    ctx.strokeStyle = '#FFFFFF';
-    ctx.lineWidth = 2;
-    ctx.stroke();
+    ctx.clip();
+    ctx.drawImage(img, 24, 36, 68, 68);
+    ctx.restore();
     tex.needsUpdate = true;
   };
   img.src = user.avatar || FALLBACK_AVATAR;
@@ -167,7 +135,7 @@ export function LotteryMarsStage({ users, blessingsCount }: Props) {
 
     const container = containerRef.current;
     const scene = new THREE.Scene();
-    scene.fog = new THREE.FogExp2(0x050510, 0.0008);
+    // Removed fog to allow pure background visibility
     sceneRef.current = scene;
 
     const camera = new THREE.PerspectiveCamera(60, container.clientWidth / container.clientHeight, 1, 5000);
@@ -188,10 +156,10 @@ export function LotteryMarsStage({ users, blessingsCount }: Props) {
     scene.add(pointLight);
 
     const planetGroup = new THREE.Group();
-    planetGroup.position.set(0, -80, 0); // Leave some space at the top (shift the whole planet down)
+    planetGroup.position.set(0, 0, 0); // Leave some space at the top (shift the whole planet down)
     planetGroupRef.current = planetGroup;
 
-    const coreGeo = new THREE.SphereGeometry(450, 32, 32);
+    const coreGeo = new THREE.SphereGeometry(300, 32, 32);
     planetGroup.add(
       new THREE.Mesh(
         coreGeo,
@@ -200,7 +168,7 @@ export function LotteryMarsStage({ users, blessingsCount }: Props) {
     );
     planetGroup.add(
       new THREE.Mesh(
-        new THREE.SphereGeometry(470, 32, 32),
+        new THREE.SphereGeometry(320, 32, 32),
         new THREE.MeshBasicMaterial({ color: 0x4f46e5, transparent: true, opacity: 0.06, side: THREE.BackSide })
       )
     );
@@ -265,7 +233,7 @@ export function LotteryMarsStage({ users, blessingsCount }: Props) {
     });
     cardsRef.current = [];
 
-    const radius = 620;
+    const radius = 420;
     const count = Math.min(180, sourceUsers.length);
 
     for (let i = 0; i < count; i++) {
@@ -278,7 +246,7 @@ export function LotteryMarsStage({ users, blessingsCount }: Props) {
 
       const texture = createCardTexture(user);
       const mesh = new THREE.Mesh(
-        new THREE.PlaneGeometry(150, 82),
+        new THREE.PlaneGeometry(120, 65),
         new THREE.MeshBasicMaterial({ map: texture, side: THREE.DoubleSide, transparent: true })
       );
 
@@ -302,7 +270,7 @@ export function LotteryMarsStage({ users, blessingsCount }: Props) {
       z: 1200,
       duration: 1.2,
       ease: 'power2.inOut',
-      onUpdate: () => cameraRef.current?.lookAt(0, -80, 0),
+      onUpdate: () => cameraRef.current?.lookAt(0, 0, 0),
     });
 
     const p2 = gsap.to(planetGroupRef.current.rotation, {
@@ -313,7 +281,7 @@ export function LotteryMarsStage({ users, blessingsCount }: Props) {
     });
 
     const p3 = gsap.to(planetGroupRef.current.position, {
-      y: -80,
+      y: 0,
       duration: 1.1,
       ease: 'power2.out',
     });
@@ -363,11 +331,11 @@ export function LotteryMarsStage({ users, blessingsCount }: Props) {
 
     gsap.to(cameraRef.current.position, {
       x: 0,
-      y: -80,
-      z: 800, // Card is at radius 620, so 800 places camera in front of the card!
+      y: 0,
+      z: 550, // Card is at radius 620, so 800 places camera in front of the card!
       duration: 3.5,
       ease: 'power3.out',
-      onUpdate: () => cameraRef.current?.lookAt(0, -80, 0),
+      onUpdate: () => cameraRef.current?.lookAt(0, 0, 0),
       onComplete: () => {
         const flashGeo = new THREE.PlaneGeometry(210, 120);
         const flashMat = new THREE.MeshBasicMaterial({
