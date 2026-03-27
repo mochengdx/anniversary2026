@@ -275,7 +275,7 @@ export function LotteryMarsStage({ users, blessingsCount }: Props) {
       z: 1200,
       duration: 1.2,
       ease: 'power2.inOut',
-      onUpdate: () => cameraRef.current?.lookAt(0, 0, 0),
+      onUpdate: () => cameraRef.current?.lookAt(0, -80, 0),
     });
 
     const p2 = gsap.to(planetGroupRef.current.rotation, {
@@ -285,9 +285,16 @@ export function LotteryMarsStage({ users, blessingsCount }: Props) {
       onComplete: () => onComplete?.(),
     });
 
+    const p3 = gsap.to(planetGroupRef.current.position, {
+      y: -80,
+      duration: 1.1,
+      ease: 'power2.out',
+    });
+
     return () => {
       p1.kill();
       p2.kill();
+      p3.kill();
     };
   }, []);
 
@@ -321,13 +328,19 @@ export function LotteryMarsStage({ users, blessingsCount }: Props) {
       ease: 'power3.out',
     });
 
+    gsap.to(planetGroupRef.current.position, {
+      y: 0, // 聚焦时将整个球体回正到屏幕居中
+      duration: 3.5,
+      ease: 'power3.out',
+    });
+
     gsap.to(cameraRef.current.position, {
       x: 0,
-      y: 0,
+      y: -80,
       z: 800, // Card is at radius 620, so 800 places camera in front of the card!
       duration: 3.5,
       ease: 'power3.out',
-      onUpdate: () => cameraRef.current?.lookAt(0, 0, 0),
+      onUpdate: () => cameraRef.current?.lookAt(0, -80, 0),
       onComplete: () => {
         const flashGeo = new THREE.PlaneGeometry(210, 120);
         const flashMat = new THREE.MeshBasicMaterial({

@@ -156,6 +156,16 @@ html, body, #root {
   border-color: transparent;
 }
 
+@keyframes resultModalFadeIn {
+  from { opacity: 0; backdrop-filter: blur(0px); }
+  to { opacity: 1; backdrop-filter: blur(4px); }
+}
+
+@keyframes resultCardPopUp {
+  from { opacity: 0; transform: scale(0.3); }
+  to { opacity: 1; transform: scale(1); }
+}
+
 .lottery-result-modal {
   position: absolute;
   inset: 0;
@@ -165,6 +175,7 @@ html, body, #root {
   justify-content: center;
   background: rgba(0,0,0,0.55);
   backdrop-filter: blur(4px);
+  animation: resultModalFadeIn 0.5s ease-out forwards;
 }
 
 .lottery-result-card {
@@ -175,6 +186,7 @@ html, body, #root {
   border: 1px solid rgba(255,255,255,0.2);
   background: radial-gradient(circle at top, rgba(139,92,246,0.45), rgba(17,24,39,0.95));
   text-align: center;
+  animation: resultCardPopUp 0.6s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards;
 }
 
 .lottery-result-tag {
@@ -246,50 +258,59 @@ html, body, #root {
   color: rgba(255,255,255,0.72);
 }
 
-/* 祝福弹幕 */
-.blessing-overlay {
+/* 弹幕 (Danmaku) */
+.danmaku-container {
   position: absolute;
-  bottom: 0;
-  left: 0;
-  right: 0;
-  height: 30%;
+  inset: 0;
   pointer-events: none;
+  z-index: 80;
   overflow: hidden;
 }
 
-.blessing-item {
+.danmaku-item {
+  position: absolute;
+  right: -100%;
   display: flex;
   align-items: center;
-  gap: 8px;
-  padding: 6px 16px;
-  background: rgba(0,0,0,0.4);
-  backdrop-filter: blur(4px);
-  border-radius: 20px;
-  margin: 4px 10px;
-  animation: slideUp 0.4s ease-out;
-  width: fit-content;
+  gap: 10px;
+  padding: 8px 20px;
+  background: rgba(0, 0, 0, 0.45);
+  border: 1px solid rgba(255,255,255,0.1);
+  backdrop-filter: blur(8px);
+  border-radius: 999px;
+  white-space: nowrap;
+  animation: danmaku-slide linear forwards;
 }
 
-.blessing-item img {
-  width: 28px;
-  height: 28px;
+.danmaku-item img {
+  width: 36px;
+  height: 36px;
   border-radius: 50%;
+  border: 1px solid rgba(255,255,255,0.5);
 }
 
-.blessing-item .name {
-  color: #ff6fd8;
-  font-size: 13px;
+.danmaku-item .name {
+  color: #fca5a5;
   font-weight: bold;
+  font-size: 20px;
 }
 
-.blessing-item .text {
-  font-size: 13px;
-  color: rgba(255,255,255,0.9);
+.danmaku-item .text {
+  color: #fff;
+  font-size: 22px;
+  font-weight: 500;
+  text-shadow: 0 1px 4px rgba(0,0,0,0.8);
 }
 
-@keyframes slideUp {
-  from { transform: translateY(20px); opacity: 0; }
-  to { transform: translateY(0); opacity: 1; }
+@keyframes danmaku-slide {
+  from {
+    transform: translateX(0);
+    right: -20%;
+  }
+  to {
+    transform: translateX(-120vw);
+    right: 100%;
+  }
 }
 
 /* 排行榜 */
