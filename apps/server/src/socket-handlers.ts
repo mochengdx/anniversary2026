@@ -31,17 +31,6 @@ export function setupSocketHandlers(
       // 更新能量球
       gameManager.addBlessing(payload);
       io.emit(SocketEvents.S2C_ENERGY_UPDATE, gameManager.getEnergyState());
-
-      // 祝福用户默认加入抽奖池
-      gameManager.addLotteryParticipant({
-        userId: payload.userId,
-        nickname: payload.nickname,
-        avatar: payload.avatar,
-      });
-      io.emit(SocketEvents.S2C_LOTTERY_POOL_UPDATE, {
-        participants: gameManager.getLotteryParticipants(),
-        total: gameManager.getLotteryParticipants().length,
-      });
     });
 
     // ===== 游戏模块 =====
