@@ -8,7 +8,8 @@
     "dev": "concurrently \"vite\" \"wait-on http://localhost:5174 && electron .\"",
     "dev:renderer": "vite",
     "build": "tsc -b && vite build",
-    "electron:start": "electron ."
+    "electron:start": "electron .",
+    "pack:mac": "pnpm run build && electron-builder --mac"
   },
   "dependencies": {
     "@pkg/shared-types": "workspace:*",
@@ -29,8 +30,29 @@
     "@vitejs/plugin-react": "^4.3.4",
     "concurrently": "^9.1.2",
     "electron": "^34.0.0",
+    "electron-builder": "^26.8.1",
     "typescript": "^5.7.3",
     "vite": "^6.1.0",
     "wait-on": "^8.0.2"
+  },
+  "build": {
+    "appId": "com.anniversary.app",
+    "productName": "KO互动大屏",
+    "mac": {
+      "target": [
+        "dmg",
+        "zip"
+      ],
+      "icon": "public/vite.svg"
+    },
+    "directories": {
+      "output": "release"
+    },
+    "files": [
+      "dist/**/*",
+      "electron-main/**/*",
+      "public/**/*",
+      "package.json"
+    ]
   }
 }
