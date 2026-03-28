@@ -37,13 +37,13 @@
   },
   "build": {
     "appId": "com.anniversary.app",
-    "productName": "KO互动大屏",
+    "productName": "鲸探KO互动大屏",
     "mac": {
       "target": [
         "dmg",
         "zip"
       ],
-      "icon": "public/vite.svg"
+      "icon": "public/app-logo@2x.png"
     },
     "directories": {
       "output": "release"
