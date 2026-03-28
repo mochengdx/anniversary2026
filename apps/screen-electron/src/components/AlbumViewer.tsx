@@ -17,7 +17,7 @@ export interface Album {
 
 type PlaybackSlide = 
   | { type: 'BANNER'; album: Album }
-  | { type: 'PHOTO'; album: Album; photos: Photo[]; layout: 'single' | 'double' };
+  | { type: 'PHOTO'; album: Album; photos: Photo[]; layout: 'single' | 'double' | 'triple' };
 
 export function AlbumViewer() {
   const [albums, setAlbums] = useState<Album[]>([]);
@@ -162,13 +162,24 @@ export function AlbumViewer() {
       // Start with banner
       newSlides.push({ type: 'BANNER', album });
       
-      // Chunk photos (randomly 1 or 2)
+      // Chunk photos (randomly 1, 2, or 3)
       let pIdx = 0;
       while (pIdx < album.photos.length) {
         const remaining = album.photos.length - pIdx;
-        const takeTwo = remaining >= 2 && Math.random() > 0.6; // 40% chance to put two photos together if possible
         
-        if (takeTwo) {
+        let takeCount = 1;
+        if (remaining >= 3) {
+          const rand = Math.random();
+          if (rand > 0.7) takeCount = 3;         // 30% chance for triple
+          else if (rand > 0.4) takeCount = 2;    // 30% chance for double
+        } else if (remaining === 2) {
+          if (Math.random() > 0.5) takeCount = 2; // 50% chance for double if 2 left
+        }
+
+        if (takeCount === 3) {
+          newSlides.push({ type: 'PHOTO', album, photos: [album.photos[pIdx], album.photos[pIdx+1], album.photos[pIdx+2]], layout: 'triple' });
+          pIdx += 3;
+        } else if (takeCount === 2) {
           newSlides.push({ type: 'PHOTO', album, photos: [album.photos[pIdx], album.photos[pIdx+1]], layout: 'double' });
           pIdx += 2;
         } else {

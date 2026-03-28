@@ -515,7 +515,7 @@ html, body, #root {
   object-fit: contain;
   border-radius: 20px;
   box-shadow: 0 20px 60px rgba(0,0,0,0.8);
-  border: 6px solid rgba(255,255,255,0.9);
+  border: 3px solid rgba(255,255,255,0.9);
   transition: transform 0.5s;
 }
 
@@ -609,3 +609,88 @@ div.player-photo-desc {
   /* Reset the hardcoded animation so our dynamic ones take over */
   animation: none !important;
 }
+
+.player-photo-desc {
+  position: absolute;
+  bottom: 20px;
+  right: 20px;
+  margin: 0 !important;
+  z-index: 60;
+  max-width: 80%;
+  font-size: 20px;
+  padding: 12px 20px;
+  border-radius: 12px;
+}
+
+/* triple layout */
+.photo-slide.layout-triple {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 30px;
+  padding: 30px;
+}
+.photo-slide.layout-triple .photo-wrapper {
+  margin: 0 10px;
+}
+
+
+.photo-slide.layout-triple {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 30px;
+  padding: 30px;
+}
+
+div.player-photo-desc {
+  position: absolute !important;
+  bottom: 30px !important;
+  right: 30px !important;
+  z-index: 60 !important;
+  max-width: 80% !important;
+  margin: 0 !important;
+}
+
+.photo-wrapper {
+  position: relative !important;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex: 1;
+}
+
+.photo-wrapper img.main-img {
+  border: 3px solid rgba(255,255,255,0.9) !important;
+}
+
+.photo-slide.layout-triple {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 30px;
+  padding: 30px;
+}
+
+div.player-photo-desc {
+  position: absolute !important;
+  bottom: 0px !important;
+  right: 0px !important;
+  z-index: 60 !important;
+  max-width: 80% !important;
+  margin: 0 !important;
+  border-radius: 0 0 16px 0 !important;
+}
+
+.photo-wrapper {
+  position: relative !important;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex: 1;
+}
+
+.photo-wrapper img.main-img {
+  border: 3px solid rgba(255,255,255,0.9) !important;
+}
+
