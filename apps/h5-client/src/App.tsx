@@ -115,7 +115,7 @@ export default function App() {
 
   return (
     <div className="app">
-      <h1>🎉 年会互动</h1>
+      <h1>🎉 KO 互动</h1>
 
       <span className={`status ${connected ? 'connected' : 'disconnected'}`}>
         {connected ? '● 已连接' : '○ 连接中...'}
@@ -126,7 +126,7 @@ export default function App() {
           className={activeTab === 'blessing' ? 'active' : ''}
           onClick={() => setActiveTab('blessing')}
         >
-          送祝福
+          抽奖许愿
         </button>
         <button
           className={activeTab === 'game' ? 'active' : ''}
@@ -146,13 +146,13 @@ export default function App() {
         {activeTab === 'blessing' && (
           <div className="blessing-input">
             <textarea
-              placeholder="写下你的新年祝福..."
+              placeholder="写下你的请愿..."
               value={blessingText}
               onChange={(e) => setBlessingText(e.target.value)}
               maxLength={200}
             />
             <button className="btn-primary" onClick={sendBlessing}>
-              {sent ? '✅ 已发送！' : '🚀 发送祝福'}
+              {sent ? '✅ 已发送！' : '🚀 发送请愿'}
             </button>
           </div>
         )}

@@ -2,6 +2,8 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import * as THREE from 'three';
 import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js';
 import { gsap } from 'gsap';
+import confetti from 'canvas-confetti';
+import { QRCodeSVG } from 'qrcode.react';
 import type { UserInfo } from '@pkg/shared-types';
 
 type LotteryState = 'IDLE' | 'COUNTDOWN' | 'SPINNING' | 'PAUSED' | 'STOPPING' | 'RESULT';
@@ -14,6 +16,7 @@ export interface LotteryMarsConfig {
   modelUrl?: string;
   usersUrl?: string;
   autoNext?: boolean;
+  h5ClientUrl?: string;
 }
 
 interface Props {
@@ -146,6 +149,15 @@ export function LotteryMarsStage({ users, blessingsCount, config = {} }: Props) 
   });
 
   const [showSettings, setShowSettings] = useState(false);
+  const [localIP, setLocalIP] = useState<string>('127.0.0.1');
+
+  useEffect(() => {
+    if (window.electronAPI?.getLocalIP) {
+      window.electronAPI.getLocalIP().then((ip: string) => {
+        setLocalIP(ip);
+      }).catch((err: any) => console.error('Failed to get local IP', err));
+    }
+  }, []);
 
   useEffect(() => {
     if (localConfig.usersUrl) {
@@ -200,8 +212,11 @@ export function LotteryMarsStage({ users, blessingsCount, config = {} }: Props) 
     // Removed fog to allow pure background visibility
     sceneRef.current = scene;
 
-    const camera = new THREE.PerspectiveCamera(60, container.clientWidth / container.clientHeight, 1, 5000);
-    camera.position.set(0, 0, 1200);
+    const initialRadius = localConfig.radius || 420;
+    const cameraZ = initialRadius * (1200 / 420); // 动态视角距离，防止球体过大包住镜头
+
+    const camera = new THREE.PerspectiveCamera(60, container.clientWidth / container.clientHeight, 1, Math.max(5000, initialRadius * 10));
+    camera.position.set(0, 0, cameraZ);
     cameraRef.current = camera;
 
     const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true, preserveDrawingBuffer: true });
@@ -369,6 +384,12 @@ export function LotteryMarsStage({ users, blessingsCount, config = {} }: Props) 
     // 如果实际人数小于卡片数据(limit)，也生成 limit 张卡片，通过 i % length 依次重复
     const count = sourceUsers.length > 0 ? limit : 0;
 
+    // 球体大小(radius)保持不变，纯动态计算卡片的合理缩放比例以避免重叠
+    // 假设以在球面上铺 180 张卡片且不重叠的状态为基准：scale = 1.0
+    // 当数量增加时，单张卡片所占面积需成比例缩小，因此卡片边长的缩放比例应为(180/count)的平方根
+    // 我们将其限制在 0.2 ~ 2.0 之间，防止极端数量时卡片过小或过大看不清
+    const dynamicScale = Math.min(Math.max(Math.sqrt(180 / Math.max(1, count)), 0.2), 2.0);
+
     // Reset pointers for polling replacement
     nextUserIdxRef.current = sourceUsers.length > limit ? limit : 0;
     replaceCardIdxRef.current = 0;
@@ -391,7 +412,8 @@ export function LotteryMarsStage({ users, blessingsCount, config = {} }: Props) 
 
       mesh.position.set(x, y, z);
       mesh.lookAt(x * 2, y * 2, z * 2);
-      mesh.userData = { user };
+      mesh.scale.set(dynamicScale, dynamicScale, dynamicScale);
+      mesh.userData = { user, baseScale: dynamicScale };
       cardsRef.current.push(mesh);
       planetGroupRef.current.add(mesh);
     }
@@ -419,10 +441,12 @@ export function LotteryMarsStage({ users, blessingsCount, config = {} }: Props) 
         material.needsUpdate = true;
         replaceMesh.userData.user = nextUser;
 
+        const baseScale = replaceMesh.userData.baseScale || 1;
+
         // 让替换时的卡片有明显的缩放动画，增强用户感知
         gsap.fromTo(replaceMesh.scale, 
           { x: 0.1, y: 0.1, z: 0.1 },
-          { x: 1, y: 1, z: 1, duration: 0.6, ease: 'back.out(1.5)' }
+          { x: baseScale, y: baseScale, z: baseScale, duration: 0.6, ease: 'back.out(1.5)' }
         );
       }
 
@@ -444,7 +468,7 @@ export function LotteryMarsStage({ users, blessingsCount, config = {} }: Props) 
     const p1 = gsap.to(cameraRef.current.position, {
       x: 0,
       y: 0,
-      z: 1200,
+      z: (localConfig.radius || 420) * (1200 / 420),
       duration: 1.2,
       ease: 'power2.inOut',
       onUpdate: () => cameraRef.current?.lookAt(0, 0, 0),
@@ -509,7 +533,7 @@ export function LotteryMarsStage({ users, blessingsCount, config = {} }: Props) 
     gsap.to(cameraRef.current.position, {
       x: 0,
       y: 0,
-      z: 750, // Moved camera further out (was 550) to leave more space when focused on the card
+      z: (localConfig.radius || 420) * (750 / 420), // 动态调整聚焦距离，防过大的球体遮挡镜头
       duration: 3.5,
       ease: 'power3.out',
       onUpdate: () => cameraRef.current?.lookAt(0, 0, 0),
@@ -575,6 +599,21 @@ export function LotteryMarsStage({ users, blessingsCount, config = {} }: Props) 
         // 绑定在 userData 用于动画每一帧更新 time
         winnerCard.userData.highlightMesh = highlightMesh;
         winnerCard.userData.highlightMat = highlightMat;
+
+        // 触发自下而上的烟花效果
+        const duration = 4000;
+        const animationEnd = Date.now() + duration;
+        const defaults = { startVelocity: 60, spread: 120, ticks: 100, zIndex: 100 };
+
+        const interval: any = setInterval(function() {
+          const timeLeft = animationEnd - Date.now();
+          if (timeLeft <= 0) {
+            return clearInterval(interval);
+          }
+          const particleCount = 40 * (timeLeft / duration);
+          confetti({ ...defaults, particleCount, origin: { x: 0.3, y: 1 }, angle: 60 });
+          confetti({ ...defaults, particleCount, origin: { x: 0.7, y: 1 }, angle: 120 });
+        }, 250);
 
         // 延时 1s 让光环展示一小会儿，再弹出中奖窗口
         setTimeout(() => {
@@ -703,6 +742,30 @@ export function LotteryMarsStage({ users, blessingsCount, config = {} }: Props) 
         </div>
       </div>
 
+      <div className="lottery-bottom-qrcode" style={{
+        position: 'absolute',
+        bottom: '30px',
+        right: '30px',
+        backgroundColor: 'rgba(0,0,0,0.6)',
+        padding: '16px',
+        borderRadius: '12px',
+        border: '1px solid rgba(255,255,255,0.1)',
+        display: 'flex',
+        flexDirection: 'column',
+        alignItems: 'center',
+        gap: '10px',
+        zIndex: 60
+      }}>
+        <QRCodeSVG 
+          value={localConfig.h5ClientUrl || `http://${localIP}:5173/?server=http://${localIP}:3000`}
+          size={120} 
+          bgColor="#ffffff" 
+          fgColor="#000000" 
+          level="L" 
+        />
+        <div style={{ color: '#fff', fontSize: '16px', fontWeight: 'bold' }}>扫码许愿（内网）</div>
+      </div>
+
       {state === 'COUNTDOWN' && countdown !== null && (
         <div className="lottery-countdown">{countdown}</div>
       )}
@@ -773,6 +836,10 @@ export function LotteryMarsStage({ users, blessingsCount, config = {} }: Props) 
               <input type="text" defaultValue={localConfig.usersUrl || ''} id="cfg_usersUrl" placeholder="返回 UserInfo[] 结构的JSON" />
             </div>
             <div className="settings-field">
+              <label>H5 链接(含server参数):</label>
+              <input type="text" defaultValue={localConfig.h5ClientUrl || ''} id="cfg_h5Url" placeholder={`如: http://${localIP}:5173/?server=http://${localIP}:3000`} />
+            </div>
+            <div className="settings-field">
               <label>自动下一轮:</label>
               <input type="checkbox" defaultChecked={localConfig.autoNext ?? false} id="cfg_autoNext" style={{ flex: 'none', width: '20px', height: '20px' }} />
             </div>
@@ -792,6 +859,7 @@ export function LotteryMarsStage({ users, blessingsCount, config = {} }: Props) 
                   replaceInterval: Number((document.getElementById('cfg_replaceInterval') as HTMLInputElement).value) || 1000,
                   modelUrl: (document.getElementById('cfg_modelUrl') as HTMLInputElement).value,
                   usersUrl: (document.getElementById('cfg_usersUrl') as HTMLInputElement).value,
+                  h5ClientUrl: (document.getElementById('cfg_h5Url') as HTMLInputElement).value,
                   autoNext: (document.getElementById('cfg_autoNext') as HTMLInputElement).checked,
                 };
                 setLocalConfig(newCfg);

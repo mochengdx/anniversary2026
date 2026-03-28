@@ -11,6 +11,7 @@ interface ImportMeta {
 interface ElectronAPI {
   selectAlbumDirectory: () => Promise<string | null>;
   readAlbumFiles: (dirPath: string) => Promise<Array<{ name: string; url: string; path: string }>>;
+  getLocalIP: () => Promise<string>;
 }
 
 declare global {

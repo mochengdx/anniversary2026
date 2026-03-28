@@ -4,4 +4,5 @@ const { contextBridge, ipcRenderer } = require('electron');
 contextBridge.exposeInMainWorld('electronAPI', {
   selectAlbumDirectory: () => ipcRenderer.invoke('select-album-directory'),
   readAlbumFiles: (dirPath) => ipcRenderer.invoke('read-album-files', dirPath),
+  getLocalIP: () => ipcRenderer.invoke('get-local-ip'),
 });

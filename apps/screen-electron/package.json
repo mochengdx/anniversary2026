@@ -13,13 +13,16 @@
   "dependencies": {
     "@pkg/shared-types": "workspace:*",
     "@pkg/utils": "workspace:*",
+    "canvas-confetti": "^1.9.4",
+    "gsap": "^3.12.7",
+    "qrcode.react": "^4.2.0",
     "react": "^19.0.0",
     "react-dom": "^19.0.0",
     "socket.io-client": "^4.8.1",
-    "three": "^0.172.0",
-    "gsap": "^3.12.7"
+    "three": "^0.172.0"
   },
   "devDependencies": {
+    "@types/canvas-confetti": "^1.9.0",
     "@types/react": "^19.0.8",
     "@types/react-dom": "^19.0.3",
     "@types/three": "^0.172.0",
