@@ -99,3 +99,28 @@ ipcMain.handle('get-local-ip', async () => {
   }
   return '127.0.0.1';
 });
+
+// 相册本地数据库
+const ALBUMS_DB_PATH = path.join(app.getPath('userData'), 'albums_db.json');
+
+ipcMain.handle('get-albums', async () => {
+  try {
+    if (fs.existsSync(ALBUMS_DB_PATH)) {
+      const data = fs.readFileSync(ALBUMS_DB_PATH, 'utf-8');
+      return JSON.parse(data);
+    }
+  } catch (e) {
+    console.error('get-albums error', e);
+  }
+  return [];
+});
+
+ipcMain.handle('save-albums', async (_event, albums) => {
+  try {
+    fs.writeFileSync(ALBUMS_DB_PATH, JSON.stringify(albums, null, 2), 'utf-8');
+    return true;
+  } catch (e) {
+    console.error('save-albums error', e);
+    return false;
+  }
+});

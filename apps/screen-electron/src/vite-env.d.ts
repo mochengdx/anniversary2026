@@ -12,6 +12,8 @@ interface ElectronAPI {
   selectAlbumDirectory: () => Promise<string | null>;
   readAlbumFiles: (dirPath: string) => Promise<Array<{ name: string; url: string; path: string }>>;
   getLocalIP: () => Promise<string>;
+  getAlbums: () => Promise<any[]>;
+  saveAlbums: (albums: any[]) => Promise<boolean>;
 }
 
 declare global {

@@ -5,4 +5,6 @@ contextBridge.exposeInMainWorld('electronAPI', {
   selectAlbumDirectory: () => ipcRenderer.invoke('select-album-directory'),
   readAlbumFiles: (dirPath) => ipcRenderer.invoke('read-album-files', dirPath),
   getLocalIP: () => ipcRenderer.invoke('get-local-ip'),
+  getAlbums: () => ipcRenderer.invoke('get-albums'),
+  saveAlbums: (albums) => ipcRenderer.invoke('save-albums', albums),
 });
