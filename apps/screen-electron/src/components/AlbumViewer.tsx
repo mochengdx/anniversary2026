@@ -15,6 +15,10 @@ export interface Album {
   coverUrl?: string;
 }
 
+type PlaybackSlide = 
+  | { type: 'BANNER'; album: Album }
+  | { type: 'PHOTO'; album: Album; photos: Photo[]; layout: 'single' | 'double' };
+
 export function AlbumViewer() {
   const [albums, setAlbums] = useState<Album[]>([]);
   const [viewMode, setViewMode] = useState<'LIST' | 'ALBUM' | 'PLAY'>('LIST');
@@ -27,10 +31,9 @@ export function AlbumViewer() {
   const [isPhotoModalOpen, setIsPhotoModalOpen] = useState(false);
   const [editPhotoInfo, setEditPhotoInfo] = useState<{id: string; desc: string}>({ id: '', desc: '' });
 
-  // Playback state
-  const [playbackIndex, setPlaybackIndex] = useState(0);
-  const [showBanner, setShowBanner] = useState(false);
-  const [playState, setPlayState] = useState<'BANNER' | 'PHOTO'>('BANNER');
+  // Playback state map
+  const [slides, setSlides] = useState<PlaybackSlide[]>([]);
+  const [slideIndex, setSlideIndex] = useState(0);
   const [animationClass, setAnimationClass] = useState('zoom-in');
 
   useEffect(() => {
@@ -89,8 +92,6 @@ export function AlbumViewer() {
   // -------------------------
   const handleAddPhotos = async () => {
     if (!window.electronAPI || !currentAlbumId) return;
-    // We already have selectAlbumDirectory, maybe we can reuse it to select a folder, 
-    // or select multiple files. Let's use selectAlbumDirectory to import a whole folder of photos into current album.
     const dirPath = await window.electronAPI.selectAlbumDirectory();
     if (!dirPath) return;
     const files = await window.electronAPI.readAlbumFiles(dirPath);
@@ -153,51 +154,60 @@ export function AlbumViewer() {
   // -------------------------
   // Playback Logic
   // -------------------------
-  const startPlayback = () => {
-    setViewMode('PLAY');
-    setPlaybackIndex(0);
-    setPlayState('BANNER');
-    setShowBanner(true);
-    
-    // Show banner for 3 seconds, then start photos
-    setTimeout(() => {
-      setShowBanner(false);
-      setTimeout(() => {
-        setPlayState('PHOTO');
-        setAnimationClass('zoom-in');
-      }, 800);
-    }, 4000);
+  const buildSlides = (targetAlbums: Album[]) => {
+    const newSlides: PlaybackSlide[] = [];
+    for (const album of targetAlbums) {
+      if (album.photos.length === 0) continue;
+      // Start with banner
+      newSlides.push({ type: 'BANNER', album });
+      
+      // Chunk photos (randomly 1 or 2)
+      let pIdx = 0;
+      while (pIdx < album.photos.length) {
+        const remaining = album.photos.length - pIdx;
+        const takeTwo = remaining >= 2 && Math.random() > 0.6; // 40% chance to put two photos together if possible
+        
+        if (takeTwo) {
+          newSlides.push({ type: 'PHOTO', album, photos: [album.photos[pIdx], album.photos[pIdx+1]], layout: 'double' });
+          pIdx += 2;
+        } else {
+          newSlides.push({ type: 'PHOTO', album, photos: [album.photos[pIdx]], layout: 'single' });
+          pIdx += 1;
+        }
+      }
+    }
+    return newSlides;
   };
 
-  const playStateRef = useRef(playState);
-  const playbackIndexRef = useRef(playbackIndex);
-  
-  useEffect(() => {
-    playStateRef.current = playState;
-    playbackIndexRef.current = playbackIndex;
-  }, [playState, playbackIndex]);
+  const startPlayback = (all: boolean = false) => {
+    const targetAlbums = all ? albums : albums.filter(a => a.id === currentAlbumId);
+    const generatedSlides = buildSlides(targetAlbums);
+    if (generatedSlides.length === 0) {
+      alert("没有可播放的照片，请先上传");
+      return;
+    }
+    setSlides(generatedSlides);
+    setSlideIndex(0);
+    setViewMode('PLAY');
+  };
 
   useEffect(() => {
-    let timer: any;
-    if (viewMode === 'PLAY' && playState === 'PHOTO') {
-      const currentAlbum = albums.find(a => a.id === currentAlbumId);
-      if (!currentAlbum || currentAlbum.photos.length === 0) return;
-
-      timer = setInterval(() => {
-        setPlaybackIndex(prev => {
-          const next = (prev + 1) % currentAlbum.photos.length;
-          return next;
-        });
-        // Randomize the ken burns animation class
+    let timer: NodeJS.Timeout;
+    if (viewMode === 'PLAY' && slides.length > 0) {
+      const currentSlide = slides[slideIndex];
+      const duration = currentSlide.type === 'BANNER' ? 3000 : 7000; // Banner is fast, photos are slow
+      
+      timer = setTimeout(() => {
+        setSlideIndex(prev => (prev + 1) % slides.length);
         const classes = ['zoom-in', 'zoom-out', 'pan-left', 'pan-right'];
         setAnimationClass(classes[Math.floor(Math.random() * classes.length)]);
-      }, 7000); // switch every 7 seconds
+      }, duration);
     }
-    return () => clearInterval(timer);
-  }, [viewMode, playState, currentAlbumId, albums]);
-
+    return () => clearTimeout(timer);
+  }, [viewMode, slideIndex, slides]);
 
   const currentAlbum = albums.find(a => a.id === currentAlbumId);
+  const playSlide = slides[slideIndex];
 
   return (
     <>
@@ -209,9 +219,16 @@ export function AlbumViewer() {
             <>
               <div className="album-header">
                 <h2>我的相册</h2>
-                <button className="primary-btn" onClick={handleCreateAlbumClick} style={{ padding: '10px 20px', background: 'var(--primary-color)', color: 'white', border: 'none', borderRadius: '8px', cursor: 'pointer' }}>
-                  + 新建相册
-                </button>
+                <div style={{display:'flex', gap:'12px'}}>
+                  <button className="primary-btn" onClick={handleCreateAlbumClick} style={{ padding: '10px 20px', background: 'var(--primary-color)', color: 'white', border: 'none', borderRadius: '8px', cursor: 'pointer' }}>
+                    + 新建相册
+                  </button>
+                  {albums.some(a => a.photos.length > 0) && (
+                    <button className="play-all-btn" onClick={() => startPlayback(true)}>
+                      ▶ 轮播所有相册
+                    </button>
+                  )}
+                </div>
               </div>
               <div className="album-grid">
                 {albums.map(album => (
@@ -248,7 +265,7 @@ export function AlbumViewer() {
                     + 导入图片(选取文件夹)
                   </button>
                   {currentAlbum.photos.length > 0 && (
-                    <button onClick={startPlayback} style={{ padding: '10px 20px', background: 'var(--primary-color)', color: 'white', border: 'none', borderRadius: '8px', cursor: 'pointer' }}>
+                    <button onClick={() => startPlayback(false)} style={{ padding: '10px 20px', background: 'var(--primary-color)', color: 'white', border: 'none', borderRadius: '8px', cursor: 'pointer' }}>
                       ▶ 播放相册
                     </button>
                   )}
@@ -274,30 +291,42 @@ export function AlbumViewer() {
       )}
 
       {/* PLAYBACK MODE */}
-      {viewMode === 'PLAY' && currentAlbum && (
+      {viewMode === 'PLAY' && playSlide && (
         <div className="album-player">
-          <button className="album-player-close" onClick={() => setViewMode('ALBUM')}>退出播放</button>
+          <button className="album-player-close" onClick={() => setViewMode(currentAlbumId ? 'ALBUM' : 'LIST')}>退出播放</button>
 
-          {/* Banner Phase */}
-          <div className={`album-player-banner ${showBanner ? 'active' : ''}`}>
-            <h1>{currentAlbum.name}</h1>
-            <p>{currentAlbum.desc}</p>
-          </div>
+          {/* Render All Slides for Smooth Crossfade (Only show current) */}
+          {slides.map((slide, i) => {
+            const isActive = i === slideIndex;
+            return (
+              <div key={i} className={`photo-slide ${isActive ? 'active' : ''} ${isActive ? animationClass : ''} ${slide.type === 'PHOTO' ? 'layout-' + slide.layout : ''}`}>
+                
+                {slide.type === 'BANNER' && isActive && (
+                  <div className="album-player-banner active">
+                    <h1>{slide.album.name}</h1>
+                    <p>{slide.album.desc}</p>
+                  </div>
+                )}
 
-          {/* Photo Phase */}
-          {playState === 'PHOTO' && currentAlbum.photos.length > 0 && (
-            <div className={`photo-slide active ${animationClass}`}>
-              <img className="photo-slide-bg" src={currentAlbum.photos[playbackIndex].url} alt="" />
-              <img className="photo-slide-img" src={currentAlbum.photos[playbackIndex].url} alt="" />
-            </div>
-          )}
-          
-          {/* Photo Description overlay */}
-          {playState === 'PHOTO' && currentAlbum.photos.length > 0 && currentAlbum.photos[playbackIndex].desc && (
-            <div key={`desc-${playbackIndex}`} className="player-photo-desc">
-              {currentAlbum.photos[playbackIndex].desc}
-            </div>
-          )}
+                {slide.type === 'PHOTO' && (
+                  <>
+                    <img className="photo-slide-bg" src={slide.photos[0].url} alt="" />
+                    {slide.photos.map((photo, pIndex) => (
+                      <div className="photo-wrapper" key={pIndex}>
+                        <img className="main-img" src={photo.url} alt="" />
+                        {photo.desc && (
+                          <div className="player-photo-desc">
+                            {photo.desc}
+                          </div>
+                        )}
+                      </div>
+                    ))}
+                  </>
+                )}
+              </div>
+            );
+          })}
+
         </div>
       )}
 

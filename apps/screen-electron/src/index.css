@@ -486,3 +486,65 @@ html, body, #root {
 .album-modal-actions { display: flex; justify-content: flex-end; gap: 10px; }
 .album-modal-actions button { padding: 8px 16px; border-radius: 6px; border: none; cursor: pointer; }
 .album-modal-actions button.primary { background: var(--primary-color); color: #fff; }
+
+.photo-slide.layout-double {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 60px;
+  padding: 60px;
+}
+.photo-slide.layout-single {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 40px;
+}
+.photo-wrapper {
+  position: relative;
+  width: 100%;
+  height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex: 1;
+}
+.photo-wrapper img.main-img {
+  max-width: 100%;
+  max-height: 100%;
+  object-fit: contain;
+  border-radius: 20px;
+  box-shadow: 0 20px 60px rgba(0,0,0,0.8);
+  border: 6px solid rgba(255,255,255,0.9);
+  transition: transform 0.5s;
+}
+
+/* Animations for contents */
+@keyframes slideInScale {
+  0% { transform: scale(1.05) translateY(20px); opacity: 0; }
+  100% { transform: scale(1) translateY(0); opacity: 1; }
+}
+.photo-slide.active .photo-wrapper img.main-img {
+  animation: slideInScale 1.2s ease-out forwards;
+}
+
+/* Random camera movements for .active container */
+.photo-slide.active.zoom-in .photo-wrapper { transform: scale(1.06); transition: transform 10s linear; }
+.photo-slide.active.zoom-out .photo-wrapper { transform: scale(0.95); transition: transform 10s linear; }
+.photo-slide.active.pan-left .photo-wrapper { transform: translateX(-4%); transition: transform 10s linear; }
+.photo-slide.active.pan-right .photo-wrapper { transform: translateX(4%); transition: transform 10s linear; }
+
+.play-all-btn {
+  padding: 10px 20px;
+  background: linear-gradient(135deg, #ff7a18, #af002d 100%);
+  color: white;
+  border: none;
+  borderRadius: 8px;
+  cursor: pointer;
+  fontWeight: bold;
+  box-shadow: 0 4px 15px rgba(255,122,24,0.4);
+  transition: transform 0.2s;
+}
+.play-all-btn:hover {
+  transform: scale(1.05);
+}
