@@ -118,11 +118,12 @@ export function LotteryMarsStage({ users, blessingsCount, config = {} }: Props) 
   const audioRef = useRef<HTMLAudioElement>(null);
   
   const [localConfig, setLocalConfig] = useState<LotteryMarsConfig>(() => {
+    let baseConfig = { usersUrl: '/users.json', ...config };
     try {
       const stored = localStorage.getItem('mars_lottery_config');
-      if (stored) return { ...config, ...JSON.parse(stored) };
+      if (stored) return { ...baseConfig, ...JSON.parse(stored) };
     } catch (e) {}
-    return config || {};
+    return baseConfig;
   });
 
   const nextUserIdxRef = useRef<number>(localConfig.displayCount || 180);
