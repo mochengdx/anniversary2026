@@ -548,3 +548,64 @@ html, body, #root {
 .play-all-btn:hover {
   transform: scale(1.05);
 }
+/* Random Text Animations */
+@keyframes flyInLeft {
+  0% { transform: translateX(-60px); opacity: 0; }
+  100% { transform: translateX(0); opacity: 1; }
+}
+@keyframes flyInRight {
+  0% { transform: translateX(60px); opacity: 0; }
+  100% { transform: translateX(0); opacity: 1; }
+}
+@keyframes flyInUp {
+  0% { transform: translateY(60px); opacity: 0; }
+  100% { transform: translateY(0); opacity: 1; }
+}
+@keyframes flyInDown {
+  0% { transform: translateY(-60px); opacity: 0; }
+  100% { transform: translateY(0); opacity: 1; }
+}
+@keyframes fadeInZoom {
+  0% { transform: scale(0.8); opacity: 0; }
+  100% { transform: scale(1); opacity: 1; }
+}
+
+.text-anim-fly-left { animation: flyInLeft 1.2s cubic-bezier(0.16, 1, 0.3, 1) forwards !important; }
+.text-anim-fly-right { animation: flyInRight 1.2s cubic-bezier(0.16, 1, 0.3, 1) forwards !important; }
+.text-anim-fly-up { animation: flyInUp 1.2s cubic-bezier(0.16, 1, 0.3, 1) forwards !important; }
+.text-anim-fly-down { animation: flyInDown 1.2s cubic-bezier(0.16, 1, 0.3, 1) forwards !important; }
+.text-anim-fade-zoom { animation: fadeInZoom 1.2s cubic-bezier(0.16, 1, 0.3, 1) forwards !important; }
+
+/* Enhanced Banner Box with Frosted Glass */
+.album-player-banner-content {
+  background: rgba(255, 255, 255, 0.1);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  padding: 50px 80px;
+  border-radius: 24px;
+  text-align: center;
+  box-shadow: 0 20px 50px rgba(0,0,0,0.5);
+  border: 1px solid rgba(255,255,255,0.2);
+}
+.album-player-banner-content h1 {
+  text-shadow: 0 4px 15px rgba(0,0,0,0.8);
+  margin-top: 0;
+}
+.album-player-banner-content p {
+  text-shadow: 0 2px 10px rgba(0,0,0,0.8);
+  margin-bottom: 0;
+}
+
+/* Override existing player-photo-desc for better background */
+div.player-photo-desc {
+  background: rgba(255, 255, 255, 0.15) !important;
+  backdrop-filter: blur(15px) !important;
+  -webkit-backdrop-filter: blur(15px) !important;
+  color: #fff !important;
+  border: 1px solid rgba(255, 255, 255, 0.2) !important;
+  border-left: 6px solid var(--primary-color) !important;
+  box-shadow: 0 10px 30px rgba(0,0,0,0.4) !important;
+  text-shadow: 0 1px 4px rgba(0,0,0,0.8) !important;
+  /* Reset the hardcoded animation so our dynamic ones take over */
+  animation: none !important;
+}

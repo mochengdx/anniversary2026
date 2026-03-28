@@ -35,6 +35,7 @@ export function AlbumViewer() {
   const [slides, setSlides] = useState<PlaybackSlide[]>([]);
   const [slideIndex, setSlideIndex] = useState(0);
   const [animationClass, setAnimationClass] = useState('zoom-in');
+  const [textAnimationClass, setTextAnimationClass] = useState('text-anim-fly-up');
 
   useEffect(() => {
     loadAlbums();
@@ -200,7 +201,9 @@ export function AlbumViewer() {
       timer = setTimeout(() => {
         setSlideIndex(prev => (prev + 1) % slides.length);
         const classes = ['zoom-in', 'zoom-out', 'pan-left', 'pan-right'];
+        const textClasses = ['text-anim-fly-up', 'text-anim-fly-down', 'text-anim-fly-left', 'text-anim-fly-right', 'text-anim-fade-zoom'];
         setAnimationClass(classes[Math.floor(Math.random() * classes.length)]);
+        setTextAnimationClass(textClasses[Math.floor(Math.random() * textClasses.length)]);
       }, duration);
     }
     return () => clearTimeout(timer);
@@ -303,8 +306,10 @@ export function AlbumViewer() {
                 
                 {slide.type === 'BANNER' && isActive && (
                   <div className="album-player-banner active">
-                    <h1>{slide.album.name}</h1>
-                    <p>{slide.album.desc}</p>
+                    <div className="album-player-banner-content">
+                      <h1 className={textAnimationClass}>{slide.album.name}</h1>
+                      <p className={textAnimationClass}>{slide.album.desc}</p>
+                    </div>
                   </div>
                 )}
 
@@ -315,7 +320,7 @@ export function AlbumViewer() {
                       <div className="photo-wrapper" key={pIndex}>
                         <img className="main-img" src={photo.url} alt="" />
                         {photo.desc && (
-                          <div className="player-photo-desc">
+                          <div className={`player-photo-desc ${textAnimationClass}`}>
                             {photo.desc}
                           </div>
                         )}
