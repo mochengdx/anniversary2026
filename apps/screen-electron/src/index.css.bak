@@ -24,17 +24,16 @@ html, body, #root {
 /* Nav Right */
 .screen-nav-right {
   position: absolute;
-  top: 20px;
+  top: 50%;
   right: 20px;
-  transform: scale(0.8);
-  transform-origin: top right;
+  transform: translateY(-50%) scale(0.5);
+  transform-origin: right center;
   z-index: 100;
   flex-direction: column;
-  gap: 64px;
+  gap: 32px;
 }
 
 .screen-nav-right button {
-  margin: 10px 0;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -127,28 +126,27 @@ html, body, #root {
 
 .lottery-control-bar {
   position: absolute;
-  top: 50%;
-  right: 20px;
-  transform: translateY(-50%);
+  bottom: 24px;
+  left: 50%;
+  transform: translateX(-50%);
   z-index: 70;
   display: flex;
-  flex-direction: column;
-  gap: 8px;
+  gap: 10px;
   padding: 10px;
-  border-radius: 12px;
+  border-radius: 999px;
   background: rgba(4, 10, 28, 0.58);
   border: 1px solid rgba(255,255,255,0.2);
   backdrop-filter: blur(10px);
 }
 
 .lottery-control-bar button {
-  padding: 8px 12px;
-  border-radius: 8px;
+  padding: 10px 22px;
+  border-radius: 999px;
   border: 1px solid rgba(255,255,255,0.2);
   background: rgba(255,255,255,0.06);
   color: #fff;
   cursor: pointer;
-  font-size: 11.2px;
+  font-size: 14px;
 }
 
 .lottery-control-bar button:disabled {
@@ -544,7 +542,7 @@ html, body, #root {
   border: none;
   border-radius: 8px;
   cursor: pointer;
-  font-weight: bold;
+  fontWeight: bold;
   box-shadow: 0 4px 15px rgba(255,122,24,0.4);
   transition: transform 0.2s;
 }

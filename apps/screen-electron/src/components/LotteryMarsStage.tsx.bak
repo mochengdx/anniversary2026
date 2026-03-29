@@ -46,7 +46,7 @@ interface Props {
 }
 
 const THEME_TEXT = {
-  title: '鲸探2026 · KO大会',
+  title: '鲸探五周年 · KO大会',
   subTitle: 'Mars Lucky Draw / 星球抽奖',
   status: {
     IDLE: '就绪',
@@ -56,8 +56,8 @@ const THEME_TEXT = {
     STOPPING: '正在聚焦中奖者...',
     RESULT: '中奖结果',
   },
-  modalTag: '荣耀时刻',
-  modalTitle: '鲸探2026 · KO大会',
+  modalTag: '鲸探2026 · KO大会',
+  modalTitle: '',
   modalSubTitle: '恭喜中奖',
   modalMessage: '感谢每一位与鲸探同频共振的伙伴',
 };
@@ -79,7 +79,7 @@ function getDemoUsers(count = 120): UserInfo[] {
   }));
 }
 
-function createCardTexture(user: UserInfo, prizeName?: string): THREE.Texture {
+function createCardTexture(user: UserInfo): THREE.Texture {
   const canvas = document.createElement('canvas');
   canvas.width = 256;
   canvas.height = 140;
@@ -103,27 +103,13 @@ function createCardTexture(user: UserInfo, prizeName?: string): THREE.Texture {
   ctx.fill();
   ctx.stroke();
 
-  if (prizeName) {
-    ctx.fillStyle = '#FFD700'; 
-    ctx.font = 'bold 16px sans-serif';
-    ctx.fillText(prizeName, 100, 36);
-    
-    ctx.fillStyle = '#F5F3FF';
-    ctx.font = 'bold 20px sans-serif';
-    ctx.fillText(user.nickname.slice(0, 8), 100, 64);
+  ctx.fillStyle = '#F5F3FF';
+  ctx.font = 'bold 22px sans-serif';
+  ctx.fillText(user.nickname.slice(0, 8), 100, 60);
 
-    ctx.fillStyle = '#C4B5FD';
-    ctx.font = '14px sans-serif';
-    ctx.fillText(`ID: ${user.userId.slice(0, 4)}***`, 100, 90);
-  } else {
-    ctx.fillStyle = '#F5F3FF';
-    ctx.font = 'bold 22px sans-serif';
-    ctx.fillText(user.nickname.slice(0, 8), 100, 60);
-
-    ctx.fillStyle = '#C4B5FD';
-    ctx.font = '16px sans-serif';
-    ctx.fillText(`ID: ${user.userId.slice(0, 4)}***`, 100, 90);
-  }
+  ctx.fillStyle = '#C4B5FD';
+  ctx.font = '16px sans-serif';
+  ctx.fillText(`ID: ${user.userId.slice(0, 4)}***`, 100, 90);
 
   ctx.beginPath();
   ctx.arc(58, 70, 34, 0, Math.PI * 2);
@@ -742,14 +728,6 @@ export function LotteryMarsStage({ users, blessingsCount, config = {} }: Props) 
       const startY = ((rows - 1) * CARD_H) / 2;
 
       selectedCards.forEach((card, i) => {
-         // Update texture with prize info before animating
-         if (prizeMatch) {
-            const material = card.material as THREE.MeshBasicMaterial;
-            if (material.map) material.map.dispose();
-            material.map = createCardTexture(card.userData.user, prizeMatch.name);
-            material.needsUpdate = true;
-         }
-
          card.userData.origQuat = card.quaternion.clone();
          card.userData.origPos = card.position.clone();
          card.userData.origScale = card.scale.clone();
@@ -953,15 +931,6 @@ export function LotteryMarsStage({ users, blessingsCount, config = {} }: Props) 
     }
     
     cardsRef.current.forEach(card => {
-       // Restore original texture without prizeName
-       const isWinner = winners.find(w => w.userId === card.userData.user?.userId);
-       if (isWinner) {
-         const material = card.material as THREE.MeshBasicMaterial;
-         if (material.map) material.map.dispose();
-         material.map = createCardTexture(card.userData.user);
-         material.needsUpdate = true;
-       }
-
        if (card.userData.origParent) {
           card.userData.origParent.attach(card);
           gsap.to(card.position, {
@@ -1097,14 +1066,14 @@ export function LotteryMarsStage({ users, blessingsCount, config = {} }: Props) 
       {controlsVisible && (
         <div className="lottery-control-bar">
           <button onClick={() => setShowSettings(true)}>⚙️ 设置</button>
-            <button onClick={() => state === 'RESULT' ? handleCloseResult(true) : handleStart(true)} disabled={state === 'SPINNING' || state === 'COUNTDOWN'}>
+          <button onClick={() => handleStart(true)} disabled={state === 'SPINNING' || state === 'COUNTDOWN'}>
             开始
           </button>
           <button onClick={handlePause} disabled={state !== 'SPINNING' && state !== 'PAUSED'}>
             {state === 'PAUSED' ? '继续' : '暂停'}
           </button>
           <button onClick={stopLottery} disabled={state !== 'SPINNING' && state !== 'PAUSED'}>
-            停止
+            停止并抽奖
           </button>
           <button onClick={() => { setState('IDLE'); resetView(); }}>
             重置视角
