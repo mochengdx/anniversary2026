@@ -37,7 +37,7 @@
   },
   "build": {
     "appId": "com.anniversary.app",
-    "productName": "Screen-Electron",
+    "productName": "鲸探 Topnod",
     "mac": {
       "target": [
         "dmg",
