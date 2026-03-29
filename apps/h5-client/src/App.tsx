@@ -166,7 +166,7 @@ export default function App() {
 
         {activeTab === 'lottery' && (
           <div className="lottery-join-box">
-            <h3>🎰 鲸探五周年 · KO大会抽奖</h3>
+            <h3>🎰 鲸探2026 · KO大会</h3>
             <p>点击下方按钮加入大屏抽奖池</p>
             <button className="btn-primary" onClick={joinLottery}>
               {joinedLottery ? '✅ 已报名成功' : '🚀 立即报名'}
