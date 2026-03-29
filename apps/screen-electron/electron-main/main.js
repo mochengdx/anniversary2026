@@ -15,6 +15,8 @@ function createWindow() {
     width: 1920,
     height: 1080,
     fullscreen: !isDev,
+    // frame: false, // 隐藏所有边框，实现纯粹的全屏展示
+    // autoHideMenuBar: true,
     webPreferences: {
       preload: path.join(__dirname, 'preload.js'),
       contextIsolation: true,
@@ -22,7 +24,8 @@ function createWindow() {
     },
   });
 
-  mainWindow.maximize(); // 默认最大化窗口
+  // mainWindow.maximize(); // 默认最大化窗口
+  mainWindow.setFullScreen(true); // 进入全屏模式
 
   if (isDev) {
     mainWindow.loadURL('http://localhost:5174');
@@ -123,4 +126,24 @@ ipcMain.handle('save-albums', async (_event, albums) => {
     console.error('save-albums error', e);
     return false;
   }
+});
+
+ipcMain.handle('select-audio-file', async () => {
+  const result = await dialog.showOpenDialog(mainWindow, {
+    properties: ['openFile'],
+    filters: [{ name: 'Audio', extensions: ['mp3', 'wav', 'ogg', 'aac'] }],
+    title: '选择背景音乐',
+  });
+  if (result.canceled) return null;
+  return `local-media://${encodeURIComponent(result.filePaths[0])}`;
+});
+
+ipcMain.handle('toggle-fullscreen', async () => {
+  if (mainWindow) {
+    const isFS = mainWindow.isFullScreen();
+    mainWindow.setFullScreen(!isFS);
+    if (!isFS) mainWindow.setMenuBarVisibility(false);
+    return !isFS;
+  }
+  return false;
 });

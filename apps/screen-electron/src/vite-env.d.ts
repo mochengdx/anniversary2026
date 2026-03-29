@@ -14,6 +14,8 @@ interface ElectronAPI {
   getLocalIP: () => Promise<string>;
   getAlbums: () => Promise<any[]>;
   saveAlbums: (albums: any[]) => Promise<boolean>;
+  selectAudioFile: () => Promise<string | null>;
+  toggleFullscreen: () => Promise<boolean>;
 }
 
 declare global {

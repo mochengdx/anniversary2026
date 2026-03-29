@@ -37,13 +37,13 @@
   },
   "build": {
     "appId": "com.anniversary.app",
-    "productName": "鲸探KO互动大屏",
+    "productName": "Screen-Electron",
     "mac": {
       "target": [
         "dmg",
         "zip"
       ],
-      "icon": "public/app-logo@2x.png"
+      "icon": "public/app-icon-512.png"
     },
     "directories": {
       "output": "release"
@@ -54,5 +54,6 @@
       "public/**/*",
       "package.json"
     ]
-  }
+  },
+  "repository": "https://github.com/mochengdx/anniversary2026.git"
 }

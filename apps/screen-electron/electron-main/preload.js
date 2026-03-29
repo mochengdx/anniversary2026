@@ -7,4 +7,6 @@ contextBridge.exposeInMainWorld('electronAPI', {
   getLocalIP: () => ipcRenderer.invoke('get-local-ip'),
   getAlbums: () => ipcRenderer.invoke('get-albums'),
   saveAlbums: (albums) => ipcRenderer.invoke('save-albums', albums),
+  selectAudioFile: () => ipcRenderer.invoke('select-audio-file'),
+  toggleFullscreen: () => ipcRenderer.invoke('toggle-fullscreen'),
 });
