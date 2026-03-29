@@ -8,6 +8,15 @@ import type { UserInfo } from '@pkg/shared-types';
 
 type LotteryState = 'IDLE' | 'COUNTDOWN' | 'SPINNING' | 'PAUSED' | 'STOPPING' | 'RESULT';
 
+export interface PrizeConfig {
+  id: string;
+  name: string;
+  item?: string;
+  totalCount: number;
+  drawTurns: number;
+  isActive: boolean;
+}
+
 export interface LotteryMarsConfig {
   bgmUrl?: string;
   radius?: number;
@@ -17,6 +26,7 @@ export interface LotteryMarsConfig {
   usersUrl?: string;
   autoNext?: boolean;
   h5ClientUrl?: string;
+  prizes?: PrizeConfig[];
 }
 
 interface Props {
@@ -110,6 +120,99 @@ function createCardTexture(user: UserInfo): THREE.Texture {
   return tex;
 }
 
+function SettingsPrizeEditor({
+  config,
+  prizesState,
+  setPrizesState,
+  setLocalConfig
+}: {
+  config: LotteryMarsConfig,
+  prizesState: Record<string, { drawnCount: number; drawnTurns: number }>,
+  setPrizesState: any,
+  setLocalConfig: any
+}) {
+  const prizes = config.prizes || [];
+
+  const updatePrizes = (newPrizes: PrizeConfig[]) => {
+    const newCfg = { ...config, prizes: newPrizes };
+    setLocalConfig(newCfg);
+    localStorage.setItem('mars_lottery_config', JSON.stringify(newCfg));
+  };
+
+  const addPrize = () => {
+    updatePrizes([...prizes, {
+      id: Date.now().toString(),
+      name: '三等奖',
+      item: '奖品',
+      totalCount: 10,
+      drawTurns: 2,
+      isActive: true
+    }]);
+  };
+
+  const removePrize = (id: string) => {
+    updatePrizes(prizes.filter(p => p.id !== id));
+  };
+
+  const resetPrizesState = () => {
+    if (confirm('确定要清空所有奖项进度吗？')) {
+      setPrizesState({});
+      localStorage.removeItem('mars_lottery_prizes_state');
+    }
+  };
+
+  const movePrize = (index: number, direction: 'up' | 'down') => {
+    const items = [...prizes];
+    const swapWith = direction === 'up' ? index - 1 : index + 1;
+    if (swapWith < 0 || swapWith >= items.length) return;
+    const temp = items[index];
+    items[index] = items[swapWith];
+    items[swapWith] = temp;
+    updatePrizes(items);
+  };
+
+  return (
+    <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+      <button onClick={addPrize} style={{ alignSelf: 'flex-start' }}>+ 新增奖项</button>
+      <button onClick={resetPrizesState} style={{ alignSelf: 'flex-start', background: '#e02424' }}>清空奖项进度</button>
+      {prizes.map((p, idx) => {
+        const state = prizesState[p.id] || { drawnCount: 0, drawnTurns: 0 };
+        return (
+          <div key={p.id} style={{ border: '1px solid #444', padding: '10px', borderRadius: '4px', display: 'flex', flexDirection: 'column', gap: '5px' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+              <div style={{ display: 'flex', gap: '5px', alignItems:'center' }}>
+                <input type="checkbox" checked={p.isActive} onChange={e => {
+                  const arr = [...prizes]; arr[idx].isActive = e.target.checked; updatePrizes(arr);
+                }} />
+                <span style={{ fontWeight: 'bold' }}>启用抽奖 (进度: {state.drawnTurns}/{p.drawTurns}轮, 人数: {state.drawnCount}/{p.totalCount})</span>
+              </div>
+              <div style={{ display: 'flex', gap: '5px' }}>
+                <button onClick={() => movePrize(idx, 'up')} disabled={idx === 0}>↑</button>
+                <button onClick={() => movePrize(idx, 'down')} disabled={idx === prizes.length - 1}>↓</button>
+                <button onClick={() => removePrize(p.id)} style={{ color: 'red' }}>✕</button>
+              </div>
+            </div>
+            <div style={{ display: 'flex', gap: '10px', marginTop: '5px' }}>
+              <input type="text" placeholder="奖项名" value={p.name} onChange={e => {
+                 const arr = [...prizes]; arr[idx].name = e.target.value; updatePrizes(arr);
+              }} style={{ width: '80px' }} />
+              <input type="text" placeholder="奖品名" value={p.item || ''} onChange={e => {
+                 const arr = [...prizes]; arr[idx].item = e.target.value; updatePrizes(arr);
+              }} style={{ flex: 1 }} />
+              <input type="number" placeholder="总数" value={p.totalCount} onChange={e => {
+                 const arr = [...prizes]; arr[idx].totalCount = Number(e.target.value); updatePrizes(arr);
+              }} style={{ width: '50px' }} title="总抽奖人数" />
+              <input type="number" placeholder="轮数" value={p.drawTurns} onChange={e => {
+                 const arr = [...prizes]; arr[idx].drawTurns = Number(e.target.value); updatePrizes(arr);
+              }} style={{ width: '50px' }} title="分几轮抽" />
+            </div>
+          </div>
+        );
+      })}
+    </div>
+  );
+}
+
 export function LotteryMarsStage({ users, blessingsCount, config = {} }: Props) {
   const containerRef = useRef<HTMLDivElement>(null);
   const sceneRef = useRef<THREE.Scene | null>(null);
@@ -139,9 +242,20 @@ export function LotteryMarsStage({ users, blessingsCount, config = {} }: Props) 
 
   const [state, setState] = useState<LotteryState>('IDLE');
   const stateRef = useRef<LotteryState>('IDLE');
+  
   const [countdown, setCountdown] = useState<number | null>(null);
-  const [winner, setWinner] = useState<UserInfo | null>(null);
   const [autoNextCount, setAutoNextCount] = useState<number | null>(null);
+  
+  const [winners, setWinners] = useState<UserInfo[]>([]);
+  const [currentPrize, setCurrentPrize] = useState<PrizeConfig | null>(null);
+  const [prizesState, setPrizesState] = useState<Record<string, { drawnCount: number; drawnTurns: number }>>(() => {
+    try {
+      const stored = localStorage.getItem('mars_lottery_prizes_state');
+      if (stored) return JSON.parse(stored);
+    } catch (e) {}
+    return {};
+  });
+
   const [controlsVisible, setControlsVisible] = useState(true);
   const [fetchedUsers, setFetchedUsers] = useState<UserInfo[]>([]);
   const [drawnUserIds, setDrawnUserIds] = useState<string[]>(() => {
@@ -156,8 +270,8 @@ export function LotteryMarsStage({ users, blessingsCount, config = {} }: Props) 
   const [localIP, setLocalIP] = useState<string>('127.0.0.1');
 
   useEffect(() => {
-    if (window.electronAPI?.getLocalIP) {
-      window.electronAPI.getLocalIP().then((ip: string) => {
+    if ((window as any).electronAPI?.getLocalIP) {
+      (window as any).electronAPI.getLocalIP().then((ip: string) => {
         setLocalIP(ip);
       }).catch((err: any) => console.error('Failed to get local IP', err));
     }
@@ -213,11 +327,10 @@ export function LotteryMarsStage({ users, blessingsCount, config = {} }: Props) 
 
     const container = containerRef.current;
     const scene = new THREE.Scene();
-    // Removed fog to allow pure background visibility
     sceneRef.current = scene;
 
     const initialRadius = localConfig.radius || 420;
-    const cameraZ = initialRadius * (1200 / 420); // 动态视角距离，防止球体过大包住镜头
+    const cameraZ = initialRadius * (1200 / 420); 
 
     const camera = new THREE.PerspectiveCamera(60, container.clientWidth / container.clientHeight, 1, Math.max(5000, initialRadius * 10));
     camera.position.set(0, 0, cameraZ);
@@ -229,14 +342,14 @@ export function LotteryMarsStage({ users, blessingsCount, config = {} }: Props) 
     container.appendChild(renderer.domElement);
     rendererRef.current = renderer;
 
-    const ambientLight = new THREE.AmbientLight(0xffffff, 2.0); // Brightened ambient light
+    const ambientLight = new THREE.AmbientLight(0xffffff, 2.0);
     scene.add(ambientLight);
 
-    const dirLight = new THREE.DirectionalLight(0xffffff, 1.5); // Add directional for more pop
+    const dirLight = new THREE.DirectionalLight(0xffffff, 1.5);
     dirLight.position.set(100, 200, 500);
     scene.add(dirLight);
 
-    const pointLight = new THREE.PointLight(0x8b5cf6, 3.5, 3000); // Brightened point light
+    const pointLight = new THREE.PointLight(0x8b5cf6, 3.5, 3000);
     pointLight.position.set(500, 500, 500);
     scene.add(pointLight);
 
@@ -245,21 +358,17 @@ export function LotteryMarsStage({ users, blessingsCount, config = {} }: Props) 
     let mixer: THREE.AnimationMixer | null = null;
     const clock = new THREE.Clock();
 
-    // Load requested GLTF model into the center
     const loader = new GLTFLoader();
     loader.setRequestHeader({ 'Access-Control-Allow-Origin': '*' });
     loader.setCrossOrigin('anonymous');
     loader.load(
       localConfig.modelUrl || 'https://mdn.alipayobjects.com/chain_myent/uri/file/as/mynftmerchant/202512090720240187.gltf',
       (gltf) => {
-        console.log('GLTF loaded successfully:', gltf);
-        // Shrink to 1/3 of previous size (450 -> 150)
         gltf.scene.scale.set(150, 150, 150); 
         gltf.scene.position.set(0, -30, 0); 
         gltf.scene.traverse((child) => {
           if ((child as THREE.Mesh).isMesh) {
             const mesh = child as THREE.Mesh;
-            // Update materials to receive lighting, ensure double side just in case
             if (mesh.material) {
               if (Array.isArray(mesh.material)) {
                 mesh.material.forEach(m => {
@@ -277,7 +386,6 @@ export function LotteryMarsStage({ users, blessingsCount, config = {} }: Props) 
         });
         planetGroup.add(gltf.scene);
 
-        // Play animations if available
         if (gltf.animations && gltf.animations.length > 0) {
           mixer = new THREE.AnimationMixer(gltf.scene);
           gltf.animations.forEach((clip) => {
@@ -285,14 +393,10 @@ export function LotteryMarsStage({ users, blessingsCount, config = {} }: Props) 
           });
         }
       },
-      (xhr) => {
-        console.log((xhr.loaded / xhr.total) * 100 + '% loaded');
-      },
-      (error) => {
-        console.error('An error happened loading the GLTF model:', error);
-      }
+      undefined,
+      (error) => console.error('An error happened loading the GLTF model:', error)
     );
-    planetGroup.position.set(0, 0, 0); // Leave some space at the top (shift the whole planet down)
+    planetGroup.position.set(0, 0, 0); 
     planetGroupRef.current = planetGroup;
 
     const coreGeo = new THREE.SphereGeometry(300, 32, 32);
@@ -342,7 +446,6 @@ export function LotteryMarsStage({ users, blessingsCount, config = {} }: Props) 
         mixer.update(delta);
       }
 
-      // 更新中奖卡片的高光动画效果
       cardsRef.current.forEach((card) => {
         if (card.userData.highlightMat) {
           card.userData.highlightMat.uniforms.time.value = time;
@@ -385,22 +488,15 @@ export function LotteryMarsStage({ users, blessingsCount, config = {} }: Props) 
 
     const radius = localConfig.radius || 420;
     const limit = localConfig.displayCount || 180;
-    // 如果实际人数小于卡片数据(limit)，也生成 limit 张卡片，通过 i % length 依次重复
     const count = sourceUsers.length > 0 ? limit : 0;
 
-    // 球体大小(radius)保持不变，纯动态计算卡片的合理缩放比例以避免重叠
-    // 假设以在球面上铺 180 张卡片且不重叠的状态为基准：scale = 1.0
-    // 当数量增加时，单张卡片所占面积需成比例缩小，因此卡片边长的缩放比例应为(180/count)的平方根
-    // 我们将其限制在 0.2 ~ 2.0 之间，防止极端数量时卡片过小或过大看不清
     const dynamicScale = Math.min(Math.max(Math.sqrt(180 / Math.max(1, count)), 0.2), 2.0);
 
-    // Reset pointers for polling replacement
     nextUserIdxRef.current = sourceUsers.length > limit ? limit : 0;
     replaceCardIdxRef.current = 0;
 
     for (let i = 0; i < count; i++) {
       const user = sourceUsers[i % sourceUsers.length];
-      // 使用斐波那契球面算法 (Fibonacci sphere) 原理，让卡片更加均匀分布在球面上
       const phi = Math.acos(1 - 2 * (i + 0.5) / count);
       const theta = Math.PI * (1 + Math.sqrt(5)) * i;
       
@@ -423,7 +519,6 @@ export function LotteryMarsStage({ users, blessingsCount, config = {} }: Props) 
     }
   }, [sourceUsers, localConfig.radius, localConfig.displayCount]);
 
-  // 实现轮询替换逻辑：每秒替换一个卡片，实现全员轮显
   useEffect(() => {
     const limit = localConfig.displayCount || 180;
     const intervalTime = localConfig.replaceInterval || 1000;
@@ -431,8 +526,8 @@ export function LotteryMarsStage({ users, blessingsCount, config = {} }: Props) 
     if (sourceUsers.length <= limit || cardsRef.current.length === 0) return;
 
     const interval = setInterval(() => {
-      // 只有在空闲或旋转时才替换卡片，停下或正在对焦时不替换
-      if (stateRef.current !== 'IDLE' && stateRef.current !== 'SPINNING') return;
+      // 只有在空闲时才替换卡片，停下或旋转时不替换（根据需求：抽奖过程中暂停动态替换）
+      if (stateRef.current !== 'IDLE') return;
 
       const replaceMesh = cardsRef.current[replaceCardIdxRef.current];
       const nextUser = sourceUsers[nextUserIdxRef.current];
@@ -447,19 +542,16 @@ export function LotteryMarsStage({ users, blessingsCount, config = {} }: Props) 
 
         const baseScale = replaceMesh.userData.baseScale || 1;
 
-        // 让替换时的卡片有明显的缩放动画，增强用户感知
         gsap.fromTo(replaceMesh.scale, 
           { x: 0.1, y: 0.1, z: 0.1 },
           { x: baseScale, y: baseScale, z: baseScale, duration: 0.6, ease: 'back.out(1.5)' }
         );
       }
 
-      // 指针后移并循环
       nextUserIdxRef.current = (nextUserIdxRef.current + 1) % sourceUsers.length;
       replaceCardIdxRef.current = (replaceCardIdxRef.current + 1) % cardsRef.current.length;
     }, intervalTime);
 
-    // 清理定时器
     return () => clearInterval(interval);
   }, [sourceUsers, localConfig.displayCount, localConfig.replaceInterval]);
 
@@ -496,17 +588,138 @@ export function LotteryMarsStage({ users, blessingsCount, config = {} }: Props) 
       p2.kill();
       p3.kill();
     };
-  }, []);
+  }, [localConfig.radius]);
 
   const stopLottery = useCallback(() => {
     if (!planetGroupRef.current || !cameraRef.current || cardsRef.current.length === 0) return;
 
     setState('STOPPING');
-    stateRef.current = 'STOPPING'; // Immediate update for animation loop to stop manipulating rotation
-    const winnerCard = cardsRef.current[Math.floor(Math.random() * cardsRef.current.length)];
-    const picked = winnerCard.userData.user as UserInfo;
-    setWinner(picked);
+    stateRef.current = 'STOPPING'; 
 
+    const activePrizes = localConfig.prizes?.filter(p => p.isActive) || [];
+    let prizeMatch = activePrizes.find(p => {
+      const s = prizesState[p.id] || { drawnCount: 0, drawnTurns: 0 };
+      return s.drawnTurns < p.drawTurns;
+    });
+    
+    let amountToDraw = 1;
+    if (prizeMatch) {
+      const s = prizesState[prizeMatch.id] || { drawnCount: 0, drawnTurns: 0 };
+      amountToDraw = Math.ceil((prizeMatch.totalCount - s.drawnCount) / (prizeMatch.drawTurns - s.drawnTurns));
+      amountToDraw = Math.max(1, amountToDraw); 
+    }
+    setCurrentPrize(prizeMatch || null);
+
+    const shuffled = [...cardsRef.current].sort(() => 0.5 - Math.random());
+    const selectedCards = shuffled.slice(0, Math.min(amountToDraw, shuffled.length));
+    
+    setWinners(selectedCards.map(c => c.userData.user));
+
+    const createHighlight = (card: THREE.Mesh) => {
+        const highlightGeo = new THREE.PlaneGeometry(150, 95);
+        const highlightMat = new THREE.ShaderMaterial({
+          uniforms: { time: { value: 0 } },
+          transparent: true,
+          depthWrite: false,
+          blending: THREE.AdditiveBlending,
+          vertexShader: `
+            varying vec2 vUv;
+            void main() {
+              vUv = uv;
+              gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
+            }
+          `,
+          fragmentShader: `
+            uniform float time;
+            varying vec2 vUv;
+            void main() {
+              vec2 center = vUv - 0.5;
+              float angle = atan(center.y, center.x);
+              vec3 color = 0.5 + 0.5 * cos(time * 3.0 + angle + vec3(0.0, 2.0, 4.0));
+              float edgeX = smoothstep(0.5, 0.40, abs(center.x));
+              float edgeY = smoothstep(0.5, 0.35, abs(center.y));
+              float alpha = edgeX * edgeY;
+              gl_FragColor = vec4(color, alpha * 2.0);
+            }
+          `
+        });
+        const highlightMesh = new THREE.Mesh(highlightGeo, highlightMat);
+        highlightMesh.position.z = -2;
+        card.add(highlightMesh);
+        card.userData.highlightMesh = highlightMesh;
+        card.userData.highlightMat = highlightMat;
+    };
+
+    const triggerConfetti = () => {
+        const duration = 4000;
+        const animationEnd = Date.now() + duration;
+        const defaults = { startVelocity: 60, spread: 120, ticks: 100, zIndex: 100 };
+        const interval: any = setInterval(function() {
+          const timeLeft = animationEnd - Date.now();
+          if (timeLeft <= 0) return clearInterval(interval);
+          const particleCount = 40 * (timeLeft / duration);
+          confetti({ ...defaults, particleCount, origin: { x: 0.3, y: 1 }, angle: 60 });
+          confetti({ ...defaults, particleCount, origin: { x: 0.7, y: 1 }, angle: 120 });
+        }, 250);
+    };
+
+    if (amountToDraw > 1) {
+      if (planetGroupRef.current) {
+        planetGroupRef.current.rotation.y = planetGroupRef.current.rotation.y;
+      }
+      
+      const cols = Math.ceil(Math.sqrt(amountToDraw));
+      const rows = Math.ceil(amountToDraw / cols);
+      const CARD_W = 160;
+      const CARD_H = 100;
+      const startX = -((cols - 1) * CARD_W) / 2;
+      const startY = ((rows - 1) * CARD_H) / 2;
+      const cameraZ = (localConfig.radius || 420) * (1200 / 420);
+      const targetZ = cameraZ - 400; 
+
+      selectedCards.forEach((card, i) => {
+         card.userData.origQuat = card.quaternion.clone();
+         card.userData.origPos = card.position.clone();
+         card.userData.origParent = planetGroupRef.current;
+         
+         sceneRef.current?.attach(card);
+         
+         const r = Math.floor(i / cols);
+         const c = i % cols;
+         
+         gsap.to(card.position, {
+            x: startX + c * CARD_W,
+            y: startY - r * CARD_H,
+            z: targetZ + Math.random() * 50,
+            duration: 2.0,
+            ease: "power3.out"
+         });
+         
+         const dummy = new THREE.Mesh();
+         dummy.position.copy(card.position);
+         dummy.position.x = startX + c * CARD_W;
+         dummy.position.y = startY - r * CARD_H;
+         dummy.position.z = targetZ;
+         if (cameraRef.current) dummy.lookAt(cameraRef.current.position);
+
+         gsap.to(card.quaternion, {
+             x: dummy.quaternion.x,
+             y: dummy.quaternion.y,
+             z: dummy.quaternion.z,
+             w: dummy.quaternion.w,
+             duration: 2.0,
+             ease: "power3.out",
+             onComplete: () => {
+                createHighlight(card);
+             }
+         });
+      });
+      triggerConfetti();
+      setTimeout(() => setState('RESULT'), 2500);
+      return;
+    }
+
+    const winnerCard = selectedCards[0];
     const targetPos = winnerCard.position.clone();
     const angleY = Math.atan2(targetPos.x, targetPos.z);
     let targetY = -angleY;
@@ -515,7 +728,6 @@ export function LotteryMarsStage({ users, blessingsCount, config = {} }: Props) 
     while (targetY - currentY > Math.PI) targetY -= TWO_PI;
     while (targetY - currentY < -Math.PI) targetY += TWO_PI;
     
-    // Add extra spins to make roulette slow-down effect (simulate momentum)
     targetY -= TWO_PI * 2;
 
     const xzLen = Math.sqrt(targetPos.x * targetPos.x + targetPos.z * targetPos.z);
@@ -524,12 +736,12 @@ export function LotteryMarsStage({ users, blessingsCount, config = {} }: Props) 
     gsap.to(planetGroupRef.current.rotation, {
       y: targetY,
       x: targetX,
-      duration: 3.5, // slightly longer for the extra spins
+      duration: 3.5,
       ease: 'power3.out',
     });
 
     gsap.to(planetGroupRef.current.position, {
-      y: 0, // 聚焦时将整个球体回正到屏幕居中
+      y: 0, 
       duration: 3.5,
       ease: 'power3.out',
     });
@@ -537,12 +749,11 @@ export function LotteryMarsStage({ users, blessingsCount, config = {} }: Props) 
     gsap.to(cameraRef.current.position, {
       x: 0,
       y: 0,
-      z: (localConfig.radius || 420) * (750 / 420), // 动态调整聚焦距离，防过大的球体遮挡镜头
+      z: (localConfig.radius || 420) * (750 / 420), 
       duration: 3.5,
       ease: 'power3.out',
       onUpdate: () => cameraRef.current?.lookAt(0, 0, 0),
       onComplete: () => {
-        // 原有的闪白光过渡效果
         const flashGeo = new THREE.PlaneGeometry(210, 120);
         const flashMat = new THREE.MeshBasicMaterial({
           color: 0xffffff,
@@ -564,74 +775,21 @@ export function LotteryMarsStage({ users, blessingsCount, config = {} }: Props) 
           },
         });
 
-        // 新增：多元色彩环绕效果
-        const highlightGeo = new THREE.PlaneGeometry(150, 95);
-        const highlightMat = new THREE.ShaderMaterial({
-          uniforms: { time: { value: 0 } },
-          transparent: true,
-          depthWrite: false,
-          blending: THREE.AdditiveBlending,
-          vertexShader: `
-            varying vec2 vUv;
-            void main() {
-              vUv = uv;
-              gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
-            }
-          `,
-          fragmentShader: `
-            uniform float time;
-            varying vec2 vUv;
-            void main() {
-              vec2 center = vUv - 0.5;
-              float angle = atan(center.y, center.x);
-              // 动态生成霓虹渐变色
-              vec3 color = 0.5 + 0.5 * cos(time * 3.0 + angle + vec3(0.0, 2.0, 4.0));
-              
-              // 边缘往内渐隐，中心留给真正的卡片
-              float edgeX = smoothstep(0.5, 0.40, abs(center.x));
-              float edgeY = smoothstep(0.5, 0.35, abs(center.y));
-              float alpha = edgeX * edgeY;
-              
-              gl_FragColor = vec4(color, alpha * 2.0);
-            }
-          `
-        });
-        const highlightMesh = new THREE.Mesh(highlightGeo, highlightMat);
-        highlightMesh.position.z = -2; // 放到卡片背部
-        winnerCard.add(highlightMesh);
-        
-        // 绑定在 userData 用于动画每一帧更新 time
-        winnerCard.userData.highlightMesh = highlightMesh;
-        winnerCard.userData.highlightMat = highlightMat;
+        createHighlight(winnerCard);
+        triggerConfetti();
 
-        // 触发自下而上的烟花效果
-        const duration = 4000;
-        const animationEnd = Date.now() + duration;
-        const defaults = { startVelocity: 60, spread: 120, ticks: 100, zIndex: 100 };
-
-        const interval: any = setInterval(function() {
-          const timeLeft = animationEnd - Date.now();
-          if (timeLeft <= 0) {
-            return clearInterval(interval);
-          }
-          const particleCount = 40 * (timeLeft / duration);
-          confetti({ ...defaults, particleCount, origin: { x: 0.3, y: 1 }, angle: 60 });
-          confetti({ ...defaults, particleCount, origin: { x: 0.7, y: 1 }, angle: 120 });
-        }, 250);
-
-        // 延时 1s 让光环展示一小会儿，再弹出中奖窗口
         setTimeout(() => {
           setState('RESULT');
         }, 1000);
       },
     });
-  }, []);
+  }, [localConfig.prizes, localConfig.radius, prizesState]);
 
   const handleStart = useCallback((withCountdown = true) => {
     if (state === 'SPINNING' || state === 'COUNTDOWN') return;
-    setWinner(null);
+    setWinners([]);
+    setCurrentPrize(null);
 
-    // 清空现有的高光效果
     cardsRef.current.forEach((card) => {
       if (card.userData.highlightMesh) {
         card.remove(card.userData.highlightMesh);
@@ -639,6 +797,13 @@ export function LotteryMarsStage({ users, blessingsCount, config = {} }: Props) 
         if (card.userData.highlightMat) card.userData.highlightMat.dispose();
         card.userData.highlightMesh = null;
         card.userData.highlightMat = null;
+      }
+      
+      if (card.userData.origParent) {
+          card.userData.origParent.attach(card);
+          card.position.copy(card.userData.origPos);
+          card.quaternion.copy(card.userData.origQuat);
+          card.userData.origParent = null;
       }
     });
 
@@ -670,18 +835,58 @@ export function LotteryMarsStage({ users, blessingsCount, config = {} }: Props) 
     setAutoNextCount(null);
     setState('IDLE');
 
-    if (winner && !drawnUserIds.includes(winner.userId)) {
-      const newDrawn = [...drawnUserIds, winner.userId];
+    if (winners.length > 0) {
+      const newDrawn = [...drawnUserIds];
+      winners.forEach(w => {
+         if (!newDrawn.includes(w.userId)) newDrawn.push(w.userId);
+      });
       setDrawnUserIds(newDrawn);
       localStorage.setItem('mars_lottery_drawn', JSON.stringify(newDrawn));
+
+      if (currentPrize) {
+          const s = prizesState[currentPrize.id] || { drawnCount: 0, drawnTurns: 0 };
+          const nextState = {
+            ...prizesState,
+            [currentPrize.id]: {
+               drawnCount: s.drawnCount + winners.length,
+               drawnTurns: s.drawnTurns + 1
+            }
+          };
+          setPrizesState(nextState);
+          localStorage.setItem('mars_lottery_prizes_state', JSON.stringify(nextState));
+      }
     }
+    
+    cardsRef.current.forEach(card => {
+       if (card.userData.origParent) {
+          card.userData.origParent.attach(card);
+          gsap.to(card.position, {
+              x: card.userData.origPos.x,
+              y: card.userData.origPos.y,
+              z: card.userData.origPos.z,
+              duration: 1.0,
+              ease: 'power2.inOut'
+          });
+          gsap.to(card.quaternion, {
+              x: card.userData.origQuat.x,
+              y: card.userData.origQuat.y,
+              z: card.userData.origQuat.z,
+              w: card.userData.origQuat.w,
+              duration: 1.0,
+              ease: 'power2.inOut',
+              onComplete: () => {
+                 card.userData.origParent = null;
+              }
+          });
+       }
+    });
 
     resetView(() => {
       if (startNext) {
         setTimeout(() => handleStart(false), 200);
       }
     });
-  }, [handleStart, resetView, winner, drawnUserIds]);
+  }, [handleStart, resetView, winners, drawnUserIds, currentPrize, prizesState]);
 
   useEffect(() => {
     if (state !== 'RESULT') return;
@@ -700,9 +905,7 @@ export function LotteryMarsStage({ users, blessingsCount, config = {} }: Props) 
     return () => clearInterval(timer);
   }, [state, handleCloseResult, localConfig.autoNext]);
 
-  // 中间模型球形网格颜色轮换 (每500ms，和卡片的颜色一致)
   useEffect(() => {
-    // 这里使用卡片生成的背景色调
     const cardColors = ['#A855F7', '#22D3EE', '#04040F'];
     let colorIdx = 0;
     
@@ -737,8 +940,8 @@ export function LotteryMarsStage({ users, blessingsCount, config = {} }: Props) 
       <div ref={containerRef} className="three-canvas" />
 
       <div className="lottery-top-info">
-        <div className="lottery-top-title">{THEME_TEXT.title}</div>
-        <div className="lottery-top-subtitle">{THEME_TEXT.subTitle}</div>
+        <div className="lottery-top-title">{currentPrize ? currentPrize.name : THEME_TEXT.title}</div>
+        <div className="lottery-top-subtitle">{currentPrize?.item ? currentPrize.item : THEME_TEXT.subTitle}</div>
         <div className="lottery-top-meta">
           <span>状态：{THEME_TEXT.status[state]}</span>
           <span>抽奖池：{sourceUsers.length}</span>
@@ -784,7 +987,7 @@ export function LotteryMarsStage({ users, blessingsCount, config = {} }: Props) 
             {state === 'PAUSED' ? '继续' : '暂停'}
           </button>
           <button onClick={stopLottery} disabled={state !== 'SPINNING' && state !== 'PAUSED'}>
-            停止并聚焦
+            停止并抽奖
           </button>
           <button onClick={() => { setState('IDLE'); resetView(); }}>
             重置视角
@@ -792,14 +995,27 @@ export function LotteryMarsStage({ users, blessingsCount, config = {} }: Props) 
         </div>
       )}
 
-      {state === 'RESULT' && winner && (
-        <div className="lottery-result-modal">
-          <div className="lottery-result-card">
-            <div className="lottery-result-tag">{THEME_TEXT.modalTag}</div>
-            <h2>{THEME_TEXT.modalTitle}</h2>
+      {state === 'RESULT' && winners.length > 0 && (
+        <div className="lottery-result-modal" style={winners.length > 1 ? { background: 'transparent', pointerEvents: 'none' } : {}}>
+          <div className="lottery-result-card" style={winners.length > 1 ? { pointerEvents: 'auto', background: 'rgba(0,0,0,0.8)', maxWidth: '80vw' } : {}}>
+            <div className="lottery-result-tag">{currentPrize ? currentPrize.name : THEME_TEXT.modalTag}</div>
+            <h2>{currentPrize?.item ? currentPrize.item : THEME_TEXT.modalTitle}</h2>
             <p className="lottery-result-sub">{THEME_TEXT.modalSubTitle}</p>
-            <img src={winner.avatar || FALLBACK_AVATAR} alt="winner" />
-            <div className="lottery-result-name">{winner.nickname}</div>
+            {winners.length === 1 ? (
+               <>
+                 <img src={winners[0].avatar || FALLBACK_AVATAR} alt="winner" />
+                 <div className="lottery-result-name">{winners[0].nickname}</div>
+               </>
+            ) : (
+               <div style={{ display: 'grid', gridTemplateColumns: 'repeat(5, 1fr)', gap: '15px', maxHeight: '400px', overflowY: 'auto', margin: '20px 0' }}>
+                  {winners.map((w, i) => (
+                      <div key={i} style={{textAlign: 'center', background: 'rgba(255,255,255,0.1)', padding: '10px', borderRadius: '8px'}}>
+                         <img src={w.avatar || FALLBACK_AVATAR} alt="w" style={{width: '64px', height:'64px', borderRadius: '50%', objectFit: 'cover'}}/>
+                         <div style={{fontSize: '14px', marginTop: '8px', color: '#fff', whiteSpace: 'nowrap', textOverflow: 'ellipsis', overflow: 'hidden'}}>{w.nickname.slice(0, 10)}</div>
+                      </div>
+                  ))}
+               </div>
+            )}
             <p className="lottery-result-msg">{THEME_TEXT.modalMessage}</p>
             <div className="lottery-result-actions">
               <button onClick={() => handleCloseResult(false)}>稍后</button>
@@ -811,52 +1027,63 @@ export function LotteryMarsStage({ users, blessingsCount, config = {} }: Props) 
           </div>
         </div>
       )}
+      
       {showSettings && (
         <div className="lottery-settings-modal">
-          <div className="lottery-settings-card">
-            <h3>抽奖配置</h3>
-            <div className="settings-field">
-              <label>背景音乐(URL):</label>
-              <input type="text" defaultValue={localConfig.bgmUrl || ''} id="cfg_bgmUrl" />
+          <div className="lottery-settings-card" style={{ maxWidth: '900px', width: '90%', maxHeight: '80vh', overflowY: 'auto' }}>
+            <div style={{ display: 'flex', gap: '30px' }}>
+              <div style={{ flex: 1 }}>
+                <h3>抽奖基础配置</h3>
+                <div className="settings-field">
+                  <label>背景音乐(URL):</label>
+                  <input type="text" defaultValue={localConfig.bgmUrl || ''} id="cfg_bgmUrl" />
+                </div>
+                <div className="settings-field">
+                  <label>星球半径:</label>
+                  <input type="number" defaultValue={localConfig.radius || 600} id="cfg_radius" />
+                </div>
+                <div className="settings-field">
+                  <label>显示卡片数:</label>
+                  <input type="number" defaultValue={localConfig.displayCount || 180} id="cfg_displayCount" />
+                </div>
+                <div className="settings-field">
+                  <label>替牌间隔(ms):</label>
+                  <input type="number" defaultValue={localConfig.replaceInterval || 1000} id="cfg_replaceInterval" />
+                </div>
+                <div className="settings-field">
+                  <label>模型(URL):</label>
+                  <input type="text" defaultValue={localConfig.modelUrl || ''} id="cfg_modelUrl" />
+                </div>
+                <div className="settings-field">
+                  <label>人员名单(URL):</label>
+                  <input type="text" defaultValue={localConfig.usersUrl || ''} id="cfg_usersUrl" placeholder="返回 UserInfo[] 结构的JSON" />
+                </div>
+                <div className="settings-field">
+                  <label>H5 链接(含server参数):</label>
+                  <input type="text" defaultValue={localConfig.h5ClientUrl || ''} id="cfg_h5Url" placeholder={"http://..."} />
+                </div>
+                <div className="settings-field">
+                  <label>自动下一轮:</label>
+                  <input type="checkbox" defaultChecked={localConfig.autoNext ?? false} id="cfg_autoNext" style={{ flex: 'none', width: '20px', height: '20px' }} />
+                </div>
+              </div>
+              <div style={{ flex: 1, borderLeft: '1px solid rgba(255,255,255,0.2)', paddingLeft: '30px' }}>
+                <h3>奖项设置 (按顺序遍历)</h3>
+                <SettingsPrizeEditor config={localConfig} prizesState={prizesState} setPrizesState={setPrizesState} setLocalConfig={setLocalConfig} />
+              </div>
             </div>
-            <div className="settings-field">
-              <label>星球半径:</label>
-              <input type="number" defaultValue={localConfig.radius || 600} id="cfg_radius" />
-            </div>
-            <div className="settings-field">
-              <label>显示卡片数:</label>
-              <input type="number" defaultValue={localConfig.displayCount || 180} id="cfg_displayCount" />
-            </div>
-            <div className="settings-field">
-              <label>替牌间隔(ms):</label>
-              <input type="number" defaultValue={localConfig.replaceInterval || 1000} id="cfg_replaceInterval" />
-            </div>
-            <div className="settings-field">
-              <label>模型(URL):</label>
-              <input type="text" defaultValue={localConfig.modelUrl || ''} id="cfg_modelUrl" />
-            </div>
-            <div className="settings-field">
-              <label>人员名单(URL):</label>
-              <input type="text" defaultValue={localConfig.usersUrl || ''} id="cfg_usersUrl" placeholder="返回 UserInfo[] 结构的JSON" />
-            </div>
-            <div className="settings-field">
-              <label>H5 链接(含server参数):</label>
-              <input type="text" defaultValue={localConfig.h5ClientUrl || ''} id="cfg_h5Url" placeholder={`如: http://${localIP}:5173/?server=http://${localIP}:3000`} />
-            </div>
-            <div className="settings-field">
-              <label>自动下一轮:</label>
-              <input type="checkbox" defaultChecked={localConfig.autoNext ?? false} id="cfg_autoNext" style={{ flex: 'none', width: '20px', height: '20px' }} />
-            </div>
-            <div className="settings-actions">
+            
+            <div className="settings-actions" style={{ marginTop: '20px' }}>
               <button onClick={() => {
                 setDrawnUserIds([]);
                 localStorage.removeItem('mars_lottery_drawn');
-                alert('已清空中奖记录！');
-              }} style={{ marginRight: 'auto', background: '#e02424' }}>清空中奖</button>
+                alert('已清空所有中奖人员记录！(奖项进度未清空，可在上方单独清空)');
+              }} style={{ marginRight: 'auto', background: '#e02424' }}>清空中奖记录</button>
 
               <button onClick={() => setShowSettings(false)}>取消</button>
               <button className="primary" onClick={() => {
                 const newCfg = {
+                  ...localConfig,
                   bgmUrl: (document.getElementById('cfg_bgmUrl') as HTMLInputElement).value,
                   radius: Number((document.getElementById('cfg_radius') as HTMLInputElement).value) || 420,
                   displayCount: Number((document.getElementById('cfg_displayCount') as HTMLInputElement).value) || 180,
@@ -869,9 +1096,8 @@ export function LotteryMarsStage({ users, blessingsCount, config = {} }: Props) 
                 setLocalConfig(newCfg);
                 localStorage.setItem('mars_lottery_config', JSON.stringify(newCfg));
                 setShowSettings(false);
-                // 重载页面以使模型或卡片重新初始化生效
                 window.location.reload();
-              }}>保存并重载</button>
+              }}>保存配置并重载</button>
             </div>
           </div>
         </div>
