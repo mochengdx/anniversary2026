@@ -24,6 +24,9 @@ export function AlbumViewer() {
   const [viewMode, setViewMode] = useState<'LIST' | 'ALBUM' | 'PLAY'>('LIST');
   const [currentAlbumId, setCurrentAlbumId] = useState<string | null>(null);
 
+  const [bgmUrl, setBgmUrl] = useState<string>('./music.mp3');
+  const [isFullscreen, setIsFullscreen] = useState(false);
+
   // Modals state
   const [isAlbumModalOpen, setIsAlbumModalOpen] = useState(false);
   const [editAlbumInfo, setEditAlbumInfo] = useState<{name: string; desc: string}>({ name: '', desc: '' });
@@ -52,6 +55,20 @@ export function AlbumViewer() {
     setAlbums(newAlbums);
     if (window.electronAPI && window.electronAPI.saveAlbums) {
       await window.electronAPI.saveAlbums(newAlbums);
+    }
+  };
+
+  const handleSelectBgm = async () => {
+    if (window.electronAPI && window.electronAPI.selectAudioFile) {
+      const url = await window.electronAPI.selectAudioFile();
+      if (url) setBgmUrl(url);
+    }
+  };
+
+  const handleToggleFullscreen = async () => {
+    if (window.electronAPI && window.electronAPI.toggleFullscreen) {
+      const full = await window.electronAPI.toggleFullscreen();
+      setIsFullscreen(full);
     }
   };
 
@@ -204,7 +221,7 @@ export function AlbumViewer() {
   };
 
   useEffect(() => {
-    let timer: NodeJS.Timeout;
+    let timer: ReturnType<typeof setTimeout>;
     if (viewMode === 'PLAY' && slides.length > 0) {
       const currentSlide = slides[slideIndex];
       const duration = currentSlide.type === 'BANNER' ? 3000 : 7000; // Banner is fast, photos are slow
@@ -234,7 +251,13 @@ export function AlbumViewer() {
               <div className="album-header">
                 <h2>我的相册</h2>
                 <div style={{display:'flex', gap:'12px'}}>
-                  <button className="primary-btn" onClick={handleCreateAlbumClick} style={{ padding: '10px 20px', background: 'var(--primary-color)', color: 'white', border: 'none', borderRadius: '8px', cursor: 'pointer' }}>
+                  <button className="primary-btn" onClick={handleToggleFullscreen} style={{ padding: '10px 20px', background: 'rgba(255,255,255,0.15)', color: 'white', border: 'none', borderRadius: '8px', cursor: 'pointer' }}>
+                    {isFullscreen ? '⧩ 退出全屏' : '⛶ 全屏显示'}
+                  </button>
+                  <button className="primary-btn" onClick={handleSelectBgm} style={{ padding: '10px 20px', background: 'rgba(255,255,255,0.15)', color: 'white', border: 'none', borderRadius: '8px', cursor: 'pointer' }}>
+                    ♫ 设置循环BGM
+                  </button>
+                  <button className="btn-create-album" onClick={handleCreateAlbumClick}>
                     + 新建相册
                   </button>
                   {albums.some(a => a.photos.length > 0) && (
@@ -244,9 +267,20 @@ export function AlbumViewer() {
                   )}
                 </div>
               </div>
-              <div className="album-grid">
-                {albums.map(album => (
-                  <div key={album.id} className="album-card" onClick={() => openAlbum(album.id)}>
+
+              {albums.length === 0 ? (
+                <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', height: '60vh', color: 'rgba(255,255,255,0.6)' }}>
+                  <div style={{ fontSize: '48px', marginBottom: '20px' }}>📦</div>
+                  <h3 style={{ fontSize: '24px', marginBottom: '10px', color: 'white' }}>欢迎使用相册，这里空空如也~</h3>
+                  <p style={{ fontSize: '16px', maxWidth: '400px', textAlign: 'center', lineHeight: '1.6' }}>
+                    您可以通过右上角的 <strong>+ 新建相册</strong> 来创建一个照片集，然后在里面导入您的回忆。<br />
+                    导入照片后可双击照片添加描述文字。还可以在右上角设置背景音乐！
+                  </p>
+                </div>
+              ) : (
+                <div className="album-grid">
+                  {albums.map(album => (
+                    <div key={album.id} className="album-card" onClick={() => openAlbum(album.id)}>
                     {album.coverUrl ? (
                       <img src={album.coverUrl} alt="cover" />
                     ) : (
@@ -260,6 +294,7 @@ export function AlbumViewer() {
                   </div>
                 ))}
               </div>
+              )}
             </>
           )}
 
@@ -287,16 +322,24 @@ export function AlbumViewer() {
               </div>
 
               <div className="album-grid">
-                {currentAlbum.photos.map((photo) => (
-                  <div key={photo.id} className="photo-card" onDoubleClick={(e) => handleEditPhotoClick(e, photo)}>
-                    <img src={photo.url} alt="photo" />
-                    <div className="photo-desc-overlay">{photo.desc || '双击添加描述'}</div>
-                    <div className="album-actions">
-                      <button onClick={(e) => handleEditPhotoClick(e, photo)}>编辑描述</button>
-                      <button onClick={(e) => handleDeletePhoto(e, photo.id)}>删除</button>
-                    </div>
+                {currentAlbum.photos.length === 0 ? (
+                  <div style={{ padding: '60px', textAlign: 'center', width: '100%', gridColumn: '1 / -1', color: 'rgba(255,255,255,0.6)' }}>
+                    <div style={{ fontSize: '40px', marginBottom: '16px' }}>📸</div>
+                    <h3>当前相册没有照片哦</h3>
+                    <p>点击右上角的 "导入图片" 选择一个包含照片的本地文件夹。</p>
                   </div>
-                ))}
+                ) : (
+                  currentAlbum.photos.map((photo) => (
+                    <div key={photo.id} className="photo-card" onDoubleClick={(e) => handleEditPhotoClick(e, photo)}>
+                      <img src={photo.url} alt="photo" />
+                      <div className="photo-desc-overlay">{photo.desc || '双击添加描述'}</div>
+                      <div className="album-actions">
+                        <button onClick={(e) => handleEditPhotoClick(e, photo)}>编辑描述</button>
+                        <button onClick={(e) => handleDeletePhoto(e, photo.id)}>删除</button>
+                      </div>
+                    </div>
+                  ))
+                )}
               </div>
             </>
           )}
@@ -329,12 +372,14 @@ export function AlbumViewer() {
                     <img className="photo-slide-bg" src={slide.photos[0].url} alt="" />
                     {slide.photos.map((photo, pIndex) => (
                       <div className="photo-wrapper" key={pIndex}>
-                        <img className="main-img" src={photo.url} alt="" />
-                        {photo.desc && (
-                          <div className={`player-photo-desc ${textAnimationClass}`}>
-                            {photo.desc}
-                          </div>
-                        )}
+                        <div className="photo-inner">
+                          <img className="main-img" src={photo.url} alt="" />
+                          {photo.desc && (
+                            <div className={`player-photo-desc ${textAnimationClass}`}>
+                              {photo.desc}
+                            </div>
+                          )}
+                        </div>
                       </div>
                     ))}
                   </>
@@ -386,6 +431,8 @@ export function AlbumViewer() {
           </div>
         </div>
       )}
+
+      {bgmUrl && <audio src={bgmUrl} loop autoPlay hidden />}
     </>
   );
 }

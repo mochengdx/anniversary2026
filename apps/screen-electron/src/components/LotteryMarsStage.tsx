@@ -121,10 +121,14 @@ export function LotteryMarsStage({ users, blessingsCount, config = {} }: Props) 
   const audioRef = useRef<HTMLAudioElement>(null);
   
   const [localConfig, setLocalConfig] = useState<LotteryMarsConfig>(() => {
-    let baseConfig = { usersUrl: '/users.json', ...config };
+    let baseConfig = { usersUrl: '/users.json', bgmUrl: './music.mp3', ...config };
     try {
       const stored = localStorage.getItem('mars_lottery_config');
-      if (stored) return { ...baseConfig, ...JSON.parse(stored) };
+      if (stored) {
+        const parsed = JSON.parse(stored);
+        if (!parsed.bgmUrl) parsed.bgmUrl = './music.mp3';
+        return { ...baseConfig, ...parsed };
+      }
     } catch (e) {}
     return baseConfig;
   });
@@ -212,8 +216,8 @@ export function LotteryMarsStage({ users, blessingsCount, config = {} }: Props) 
     // Removed fog to allow pure background visibility
     sceneRef.current = scene;
 
-    const initialRadius = localConfig.radius || 420;
-    const cameraZ = initialRadius * (1200 / 420); // 动态视角距离，防止球体过大包住镜头
+    const initialRadius = localConfig.radius || 600;
+    const cameraZ = initialRadius * (1200 / 600); // 动态视角距离，防止球体过大包住镜头
 
     const camera = new THREE.PerspectiveCamera(60, container.clientWidth / container.clientHeight, 1, Math.max(5000, initialRadius * 10));
     camera.position.set(0, 0, cameraZ);
@@ -379,7 +383,7 @@ export function LotteryMarsStage({ users, blessingsCount, config = {} }: Props) 
     });
     cardsRef.current = [];
 
-    const radius = localConfig.radius || 420;
+    const radius = localConfig.radius || 600;
     const limit = localConfig.displayCount || 180;
     // 如果实际人数小于卡片数据(limit)，也生成 limit 张卡片，通过 i % length 依次重复
     const count = sourceUsers.length > 0 ? limit : 0;
@@ -468,7 +472,7 @@ export function LotteryMarsStage({ users, blessingsCount, config = {} }: Props) 
     const p1 = gsap.to(cameraRef.current.position, {
       x: 0,
       y: 0,
-      z: (localConfig.radius || 420) * (1200 / 420),
+      z: (localConfig.radius || 600) * (1200 / 600),
       duration: 1.2,
       ease: 'power2.inOut',
       onUpdate: () => cameraRef.current?.lookAt(0, 0, 0),
@@ -533,7 +537,7 @@ export function LotteryMarsStage({ users, blessingsCount, config = {} }: Props) 
     gsap.to(cameraRef.current.position, {
       x: 0,
       y: 0,
-      z: (localConfig.radius || 420) * (750 / 420), // 动态调整聚焦距离，防过大的球体遮挡镜头
+      z: (localConfig.radius || 600) * (750 / 600), // 动态调整聚焦距离，防过大的球体遮挡镜头
       duration: 3.5,
       ease: 'power3.out',
       onUpdate: () => cameraRef.current?.lookAt(0, 0, 0),
@@ -817,7 +821,7 @@ export function LotteryMarsStage({ users, blessingsCount, config = {} }: Props) 
             </div>
             <div className="settings-field">
               <label>星球半径:</label>
-              <input type="number" defaultValue={localConfig.radius || 420} id="cfg_radius" />
+              <input type="number" defaultValue={localConfig.radius || 600} id="cfg_radius" />
             </div>
             <div className="settings-field">
               <label>显示卡片数:</label>
@@ -854,7 +858,7 @@ export function LotteryMarsStage({ users, blessingsCount, config = {} }: Props) 
               <button className="primary" onClick={() => {
                 const newCfg = {
                   bgmUrl: (document.getElementById('cfg_bgmUrl') as HTMLInputElement).value,
-                  radius: Number((document.getElementById('cfg_radius') as HTMLInputElement).value) || 420,
+                  radius: Number((document.getElementById('cfg_radius') as HTMLInputElement).value) || 600,
                   displayCount: Number((document.getElementById('cfg_displayCount') as HTMLInputElement).value) || 180,
                   replaceInterval: Number((document.getElementById('cfg_replaceInterval') as HTMLInputElement).value) || 1000,
                   modelUrl: (document.getElementById('cfg_modelUrl') as HTMLInputElement).value,
