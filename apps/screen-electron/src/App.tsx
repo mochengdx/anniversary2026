@@ -6,7 +6,7 @@ import { AlbumViewer } from './components/AlbumViewer.js';
 import { LotteryMarsStage } from './components/LotteryMarsStage.js';
 import { DanmakuOverlay } from './components/DanmakuOverlay.js';
 
-type ScreenMode = 'lottery' | 'game' | 'album';
+type ScreenMode = 'lottery' | 'game' | 'album' | 'ko';
 
 export default function App() {
   const [mode, setMode] = useState<ScreenMode>('lottery');
@@ -17,7 +17,7 @@ export default function App() {
   useEffect(() => {
     // 祝福
     socket.on(SocketEvents.S2C_BROADCAST_BLESSING, (payload) => {
-      setBlessings((prev) => [...prev.slice(-50), payload]); // 保留最新 50 条
+      setBlessings((prev) => [...prev.slice(-300), payload]); // 增加历史缓存以防丢失，并展示最新的
     });
 
     socket.on(SocketEvents.S2C_LOTTERY_POOL_UPDATE, (payload) => {
@@ -35,6 +35,27 @@ export default function App() {
       socket.off(SocketEvents.S2C_GAME_STATE_TICK);
     };
   }, []);
+
+  const toggleFullscreen = async () => {
+    if (window.electronAPI && window.electronAPI.toggleFullscreen) {
+      await window.electronAPI.toggleFullscreen();
+    } else {
+      if (!document.fullscreenElement) {
+        document.documentElement.requestFullscreen().catch(console.error);
+      } else {
+        document.exitFullscreen().catch(console.error);
+      }
+    }
+  };
+
+  // 根据当前模块过滤弹幕 (兼容老数据或未分类数据则都显示在 lottery 或者默认)
+  const currentCategoryBlessings = blessings.filter(b => {
+    if (!b.category) return mode === 'lottery'; // 之前的默认为抽奖
+    if (mode === 'ko') return b.category === 'ko';
+    if (mode === 'album') return b.category === 'album';
+    if (mode === 'lottery') return b.category === 'lottery';
+    return false;
+  });
 
   return (
     <div className="screen-app">
@@ -55,23 +76,35 @@ export default function App() {
           <svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect width="18" height="18" x="3" y="3" rx="2" ry="2"/><circle cx="9" cy="9" r="2"/><path d="m21 15-3.086-3.086a2 2 0 0 0-2.828 0L6 21"/></svg>
         </button>
         <button
-          className={mode === 'game' ? 'active' : ''}
-          onClick={() => setMode('game')}
-          title="摇一摇"
+          className={mode === 'ko' ? 'active' : ''}
+          onClick={() => setMode('ko')}
+          title="KO祝福语"
         >
-          <svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="2" y="6" width="20" height="12" rx="2"/><path d="M6 12h4"/><path d="M8 10v4"/><circle cx="15" cy="13" r="1"/><circle cx="18" cy="11" r="1"/></svg>
+          <svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M20 10c0 6-8 12-8 12s-8-6-8-12a5 5 0 0 1 10-2 5 5 0 0 1 10 2Z"/></svg>
+        </button>
+
+        {/* 全局全屏按钮 */}
+        <button onClick={toggleFullscreen} title="全屏切换">
+          <svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M8 3H5a2 2 0 0 0-2 2v3m18 0V5a2 2 0 0 0-2-2h-3m0 18h3a2 2 0 0 0 2-2v-3M3 16v3a2 2 0 0 0 2 2h3"/></svg>
         </button>
       </div>
 
-      {/* 弹幕浮层 (全局) */}
-      <DanmakuOverlay blessings={blessings} />
+      {/* 弹幕浮层 (全局按类过滤) */}
+      <DanmakuOverlay blessings={currentCategoryBlessings} mode={mode} />
 
       {/* 抽奖 */}
       {mode === 'lottery' && (
-        <LotteryMarsStage users={lotteryUsers} blessingsCount={blessings.length} />
+        <LotteryMarsStage users={lotteryUsers} blessingsCount={currentCategoryBlessings.length} />
       )}
 
-      {/* 游戏排行 */}
+      {/* KO 祝福区域 (新增的空占位/或沿用此前的游戏界面，这里按要求加个KO祝福专属背景即可) */}
+      {mode === 'ko' && (
+        <div style={{ width: '100%', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+          <h1 style={{ fontSize: '4rem', color: '#fff', textShadow: '0 4px 20px rgba(0,0,0,0.5)' }}>KO 祝福墙</h1>
+        </div>
+      )}
+
+      {/* 游戏排行 (之前的老逻辑暂存，如果不玩游戏了可以移除，这里保留以免破坏老结构) */}
       {mode === 'game' && gameState && (
         <div className="leaderboard">
           <h2>🏆 实时排行榜</h2>

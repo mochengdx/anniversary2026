@@ -1087,7 +1087,7 @@ export function LotteryMarsStage({ users, blessingsCount, config = {} }: Props) 
           fgColor="#000000" 
           level="L" 
         />
-        <div style={{ color: '#fff', fontSize: '16px', fontWeight: 'bold' }}>扫码许愿（内网）</div>
+        <div style={{ color: '#fff', fontSize: '16px', fontWeight: 'bold' }}>支付宝扫码许愿（内网）</div>
       </div>
 
       {state === 'COUNTDOWN' && countdown !== null && (
@@ -1262,7 +1262,7 @@ export function LotteryMarsStage({ users, blessingsCount, config = {} }: Props) 
                   const newCfg = {
                     ...localConfig,
                     bgmUrl: (document.getElementById('cfg_bgmUrl') as HTMLInputElement).value,
-                    radius: Number((document.getElementById('cfg_radius') as HTMLInputElement).value) || 420,
+                    radius: Number((document.getElementById('cfg_radius') as HTMLInputElement).value) || 600,
                     displayCount: Number((document.getElementById('cfg_displayCount') as HTMLInputElement).value) || 180,
                     replaceInterval: Number((document.getElementById('cfg_replaceInterval') as HTMLInputElement).value) || 1000,
                     modelUrl: (document.getElementById('cfg_modelUrl') as HTMLInputElement).value,

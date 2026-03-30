@@ -12,6 +12,8 @@
     "build:h5": "pnpm --filter @app/h5-client build",
     "build:screen": "pnpm --filter @app/screen-electron build",
     "build:all": "pnpm run build:shared && pnpm run build:server && pnpm run build:h5 && pnpm run build:screen",
+    "pack:mac": "pnpm --filter @app/screen-electron pack:mac",
+    "pack:win": "pnpm --filter @app/screen-electron pack:win",
     "dev": "concurrently \"pnpm dev:server\" \"pnpm dev:h5\" \"pnpm dev:screen\"",
     "clean": "rm -rf node_modules packages/*/dist apps/*/dist apps/*/node_modules packages/*/node_modules"
   },

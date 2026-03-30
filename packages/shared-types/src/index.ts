@@ -33,7 +33,8 @@ export interface BlessingPayload {
   userId: string;
   avatar: string;
   nickname: string;
-  content: string;
+  content: string; 
+  category?: string;
   timestamp: number;
 }
 

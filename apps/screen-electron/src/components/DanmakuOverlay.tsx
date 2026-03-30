@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useRef } from 'react';
 import type { BlessingPayload } from '@pkg/shared-types';
 
 interface DanmakuItem extends BlessingPayload {
@@ -7,25 +7,44 @@ interface DanmakuItem extends BlessingPayload {
   duration: number;
 }
 
-export function DanmakuOverlay({ blessings }: { blessings: BlessingPayload[] }) {
+export function DanmakuOverlay({ blessings, mode }: { blessings: BlessingPayload[], mode?: string }) {
   const [items, setItems] = useState<DanmakuItem[]>([]);
+  const prevModeRef = useRef<string | undefined>(mode);
+  const prevLatestRef = useRef<BlessingPayload | null>(null);
 
   useEffect(() => {
-    if (blessings.length === 0) return;
+    // If the mode has switched, clear the current danmaku to isolate modules
+    if (mode !== prevModeRef.current) {
+      setItems([]);
+      prevModeRef.current = mode;
+      
+      // We skip rendering the existing 'latest' upon switch to avoid re-triggering old messages
+      if (blessings.length > 0) {
+        prevLatestRef.current = blessings[blessings.length - 1];
+      }
+      return;
+    }
+
+    if (blessings.length === 0) {
+      prevLatestRef.current = null;
+      return;
+    }
+
     const latest = blessings[blessings.length - 1];
 
-    // Every time a new blessing arrives, spawn a danmaku item
-    const newItem: DanmakuItem = {
-      ...latest,
-      id: `${latest.userId}-${Date.now()}-${Math.random()}`,
-      top: Math.random() * 60 + 10, // Random height from 10% to 70% from top
-      duration: Math.random() * 6 + 10, // Takes between 10s and 16s to cross the screen
-    };
+    // If there is a completely new message arrived in the current mode
+    if (latest && latest !== prevLatestRef.current) {
+      const newItem: DanmakuItem = {
+        ...latest,
+        id: `${latest.userId}-${Date.now()}-${Math.random()}`,
+        top: Math.random() * 60 + 10,
+        duration: Math.random() * 6 + 10,
+      };
+      setItems((prev) => [...prev, newItem].slice(-40));
+      prevLatestRef.current = latest;
+    }
+  }, [blessings, mode]);
 
-    setItems((prev) => [...prev, newItem].slice(-40)); // Max 40 items active on screen
-  }, [blessings]);
-
-  // Remove items that have finished their animation to avoid memory leaks
   const handleAnimationEnd = (id: string) => {
     setItems((prev) => prev.filter((item) => item.id !== id));
   };

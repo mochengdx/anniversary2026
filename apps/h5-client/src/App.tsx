@@ -1,26 +1,26 @@
-import { useState, useEffect, useCallback, useRef } from 'react';
+import { useState, useEffect, useCallback, useMemo } from 'react';
 import { SocketEvents } from '@pkg/shared-types';
 import type { BlessingPayload, GameActionPayload } from '@pkg/shared-types';
-import { throttle } from '@pkg/utils';
 import { socket } from './socket.js';
 
-type Tab = 'blessing' | 'game' | 'lottery';
+type Tab = 'lottery' | 'album' | 'ko';
+
+const AVATARS = [
+  'https://mdn.alipayobjects.com/huamei_b5qxsh/afts/img/A*2A-jQI_fR6YAAAAAAAAAAAAADrZ5AQ/original',
+  'https://mdn.alipayobjects.com/huamei_b5qxsh/afts/img/A*-fS0QL9QoZ8AAAAAAAAAAAAADrZ5AQ/original',
+  'https://mdn.alipayobjects.com/huamei_b5qxsh/afts/img/A*o3Z_RaZ2cysAAAAAAAAAAAAADrZ5AQ/original',
+  'https://mdn.alipayobjects.com/huamei_b5qxsh/afts/img/A*M_QNT5Tz4sAAAAAAAAAAAAAADrZ5AQ/original'
+];
 
 export default function App() {
   const [connected, setConnected] = useState(false);
   const [userId, setUserId] = useState('');
-  const [activeTab, setActiveTab] = useState<Tab>('blessing');
+  const [activeTab, setActiveTab] = useState<Tab>('lottery');
   const [blessingText, setBlessingText] = useState('');
-  const [score, setScore] = useState(0);
+  const [nickname, setNickname] = useState('');
   const [sent, setSent] = useState(false);
-  const [joinedLottery, setJoinedLottery] = useState(false);
 
-  // 节流发送游戏动作 (100ms)
-  const throttledSendAction = useRef(
-    throttle((action: GameActionPayload) => {
-      socket.emit(SocketEvents.C2S_GAME_ACTION, action);
-    }, 100)
-  ).current;
+  const randomAvatar = useMemo(() => AVATARS[Math.floor(Math.random() * AVATARS.length)], []);
 
   useEffect(() => {
     socket.on('connect', () => setConnected(true));
@@ -36,82 +36,23 @@ export default function App() {
     };
   }, []);
 
-  // ===== 祝福 =====
   const sendBlessing = useCallback(() => {
     if (!blessingText.trim()) return;
 
     const payload: BlessingPayload = {
       userId,
-      avatar: `https://api.dicebear.com/7.x/thumbs/svg?seed=${userId}`,
-      nickname: `用户${userId.slice(-4)}`,
+      avatar: randomAvatar,
+      nickname: nickname.trim() || `用户${userId.slice(-4)}`,
       content: blessingText.trim(),
       timestamp: Date.now(),
+      category: activeTab,
     };
 
     socket.emit(SocketEvents.C2S_SEND_BLESSING, payload);
     setBlessingText('');
     setSent(true);
     setTimeout(() => setSent(false), 2000);
-  }, [blessingText, userId]);
-
-  // ===== 摇一摇游戏 =====
-  useEffect(() => {
-    if (activeTab !== 'game') return;
-
-    // 加入游戏
-    socket.emit(SocketEvents.C2S_JOIN_GAME, {
-      userId,
-      nickname: `用户${userId.slice(-4)}`,
-      avatar: `https://api.dicebear.com/7.x/thumbs/svg?seed=${userId}`,
-    });
-
-    let lastShakeTime = 0;
-
-    const handleMotion = (e: DeviceMotionEvent) => {
-      const acc = e.accelerationIncludingGravity;
-      if (!acc) return;
-
-      const force = Math.sqrt(
-        (acc.x || 0) ** 2 + (acc.y || 0) ** 2 + (acc.z || 0) ** 2
-      );
-
-      // 摇动阈值
-      if (force > 15 && Date.now() - lastShakeTime > 100) {
-        lastShakeTime = Date.now();
-        setScore((s) => s + 1);
-        throttledSendAction({
-          userId,
-          actionType: 'shake',
-          value: 1,
-          timestamp: Date.now(),
-        });
-      }
-    };
-
-    window.addEventListener('devicemotion', handleMotion);
-    return () => window.removeEventListener('devicemotion', handleMotion);
-  }, [activeTab, userId, throttledSendAction]);
-
-  // 点击模拟摇一摇 (desktop fallback)
-  const handleTap = useCallback(() => {
-    setScore((s) => s + 1);
-    throttledSendAction({
-      userId,
-      actionType: 'tap',
-      value: 1,
-      timestamp: Date.now(),
-    });
-  }, [userId, throttledSendAction]);
-
-  const joinLottery = useCallback(() => {
-    if (!userId) return;
-    socket.emit(SocketEvents.C2S_JOIN_LOTTERY, {
-      userId,
-      nickname: `用户${userId.slice(-4)}`,
-      avatar: `https://api.dicebear.com/7.x/thumbs/svg?seed=${userId}`,
-    });
-    setJoinedLottery(true);
-  }, [userId]);
+  }, [blessingText, userId, nickname, randomAvatar, activeTab]);
 
   return (
     <div className="app">
@@ -123,57 +64,48 @@ export default function App() {
 
       <div className="tab-bar">
         <button
-          className={activeTab === 'blessing' ? 'active' : ''}
-          onClick={() => setActiveTab('blessing')}
+          className={activeTab === 'lottery' ? 'active' : ''}
+          onClick={() => setActiveTab('lottery')}
         >
           抽奖许愿
         </button>
         <button
-          className={activeTab === 'game' ? 'active' : ''}
-          onClick={() => setActiveTab('game')}
+          className={activeTab === 'album' ? 'active' : ''}
+          onClick={() => setActiveTab('album')}
         >
-          摇一摇
+          相册弹幕
         </button>
         <button
-          className={activeTab === 'lottery' ? 'active' : ''}
-          onClick={() => setActiveTab('lottery')}
+          className={activeTab === 'ko' ? 'active' : ''}
+          onClick={() => setActiveTab('ko')}
         >
-          抽奖报名
+          KO祝福语
         </button>
       </div>
 
       <div className="panel">
-        {activeTab === 'blessing' && (
-          <div className="blessing-input">
-            <textarea
-              placeholder="写下你的请愿..."
-              value={blessingText}
-              onChange={(e) => setBlessingText(e.target.value)}
-              maxLength={200}
-            />
-            <button className="btn-primary" onClick={sendBlessing}>
-              {sent ? '✅ 已发送！' : '🚀 发送请愿'}
-            </button>
-          </div>
-        )}
-
-        {activeTab === 'game' && (
-          <div className="shake-area" onClick={handleTap}>
-            <div className="shake-score">{score}</div>
-            <p className="shake-hint">📱 摇动手机或点击屏幕加分！</p>
-          </div>
-        )}
-
-        {activeTab === 'lottery' && (
-          <div className="lottery-join-box">
-            <h3>🎰 鲸探2026 · KO大会</h3>
-            <p>点击下方按钮加入大屏抽奖池</p>
-            <button className="btn-primary" onClick={joinLottery}>
-              {joinedLottery ? '✅ 已报名成功' : '🚀 立即报名'}
-            </button>
-          </div>
-        )}
+        <div className="blessing-input">
+          <input
+            type="text"
+            className="nickname-input"
+            maxLength={10}
+            placeholder="花名 (选填)"
+            value={nickname}
+            onChange={(e) => setNickname(e.target.value)}
+            style={{ width: '100%', marginBottom: 10, padding: 8, boxSizing: 'border-box', border: '1px solid #ccc', borderRadius: 6 }}
+          />
+          <textarea
+            placeholder={`写下你的${activeTab === 'lottery' ? '许愿内容' : activeTab === 'album' ? '相册弹幕' : 'KO祝福'}...`}
+            value={blessingText}
+            onChange={(e) => setBlessingText(e.target.value)}
+            maxLength={200}
+          />
+          <button className="btn-primary" onClick={sendBlessing}>
+            {sent ? '✅ 已发送！' : '🚀 发送消息'}
+          </button>
+        </div>
       </div>
     </div>
   );
 }
+

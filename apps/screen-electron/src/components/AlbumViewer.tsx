@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
+import { QRCodeSVG } from 'qrcode.react';
 
 export interface Photo {
   id: string;
@@ -23,9 +24,17 @@ export function AlbumViewer() {
   const [albums, setAlbums] = useState<Album[]>([]);
   const [viewMode, setViewMode] = useState<'LIST' | 'ALBUM' | 'PLAY'>('LIST');
   const [currentAlbumId, setCurrentAlbumId] = useState<string | null>(null);
+  const [localIP, setLocalIP] = useState<string>('127.0.0.1');
+
+  useEffect(() => {
+    if ((window as any).electronAPI?.getLocalIP) {
+      (window as any).electronAPI.getLocalIP().then((ip: string) => {
+        setLocalIP(ip);
+      }).catch((err: any) => console.error('Failed to get local IP', err));
+    }
+  }, []);
 
   const [bgmUrl, setBgmUrl] = useState<string>('./music.mp3');
-  const [isFullscreen, setIsFullscreen] = useState(false);
 
   // Modals state
   const [isAlbumModalOpen, setIsAlbumModalOpen] = useState(false);
@@ -62,13 +71,6 @@ export function AlbumViewer() {
     if (window.electronAPI && window.electronAPI.selectAudioFile) {
       const url = await window.electronAPI.selectAudioFile();
       if (url) setBgmUrl(url);
-    }
-  };
-
-  const handleToggleFullscreen = async () => {
-    if (window.electronAPI && window.electronAPI.toggleFullscreen) {
-      const full = await window.electronAPI.toggleFullscreen();
-      setIsFullscreen(full);
     }
   };
 
@@ -251,9 +253,6 @@ export function AlbumViewer() {
               <div className="album-header">
                 <h2>我的相册</h2>
                 <div style={{display:'flex', gap:'12px'}}>
-                  <button className="primary-btn" onClick={handleToggleFullscreen} style={{ padding: '10px 20px', background: 'rgba(255,255,255,0.15)', color: 'white', border: 'none', borderRadius: '8px', cursor: 'pointer' }}>
-                    {isFullscreen ? '⧩ 退出全屏' : '⛶ 全屏显示'}
-                  </button>
                   <button className="primary-btn" onClick={handleSelectBgm} style={{ padding: '10px 20px', background: 'rgba(255,255,255,0.15)', color: 'white', border: 'none', borderRadius: '8px', cursor: 'pointer' }}>
                     ♫ 设置循环BGM
                   </button>
@@ -431,6 +430,30 @@ export function AlbumViewer() {
           </div>
         </div>
       )}
+
+      <div style={{
+        position: 'absolute',
+        bottom: '30px',
+        right: '30px',
+        backgroundColor: 'rgba(0,0,0,0.6)',
+        padding: '16px',
+        borderRadius: '12px',
+        border: '1px solid rgba(255,255,255,0.1)',
+        display: 'flex',
+        flexDirection: 'column',
+        alignItems: 'center',
+        gap: '10px',
+        zIndex: 60
+      }}>
+        <QRCodeSVG 
+          value={`http://${localIP}:5173/?server=http://${localIP}:3000`}
+          size={120} 
+          bgColor="#ffffff" 
+          fgColor="#000000" 
+          level="L" 
+        />
+        <div style={{ color: '#fff', fontSize: '16px', fontWeight: 'bold' }}>支付宝扫码发弹幕</div>
+      </div>
 
       {bgmUrl && <audio src={bgmUrl} loop autoPlay hidden />}
     </>
