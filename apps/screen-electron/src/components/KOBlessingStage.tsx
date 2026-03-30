@@ -79,9 +79,10 @@ export function KOBlessingStage() {
       if (hasHead) {
         // 计算鱼头相对于模型中心（已经移至 wrapper 原点）的水平方向向量
         const dir = headPos.clone().setY(0).normalize();
-        // wrapper.lookAt(0,0,0) 会将局部 -Z 轴指向朝前的移动方向，因此我们要把鱼头对齐到 -Z 轴
+        // wrapper.lookAt(0,0,0) 会将局部 -Z 轴指向朝前的移动方向
         const angle = Math.atan2(dir.x, dir.z);
-        whaleModel.rotation.y = -angle + Math.PI;
+        // 修正：去掉 + Math.PI 确保鱼头确实朝前（如果头尾反了的话）
+        whaleModel.rotation.y = -angle;
         console.log('检测到 jon1 鱼头，已自动修正在前进方向:', dir);
       }
 
@@ -101,21 +102,21 @@ export function KOBlessingStage() {
       const visibleHeight = 2 * Math.tan(fov / 2) * camera.position.z;
       const visibleWidth = visibleHeight * camera.aspect;
 
-      // 让它从屏幕边缘外进入
-      const startRadius = Math.max(visibleWidth, visibleHeight) * 0.7; 
+      // 让它从屏幕外极大范围进入，确保游出再出现的过程平滑不突兀
+      const startRadius = Math.max(visibleWidth, visibleHeight) * 0.5 + 1500; 
       
       scene.add(wrapper);
 
       // 定义无限游动逻辑
       const swim = () => {
-        // 随机生成起点（屏幕包围圈外）
+        // 随机生成起点（屏幕包围圈外远端）
         const randomStartAngle = Math.random() * Math.PI * 2;
         const startX = Math.cos(randomStartAngle) * startRadius;
         const startY = Math.sin(randomStartAngle) * startRadius;
-        // z值增加一点随机景深，防止每次看起来大小一模一样
-        const startZ = -500 + (Math.random() - 0.5) * 300;
+        // z值增加一点随机景深，防止每次看起来大小一模一样，但不能太靠前或靠后导致剪裁
+        const startZ = -500 + (Math.random() - 0.5) * 500;
 
-        // 终点是对向偏移一个随机角度（也就是穿过屏幕的另一端）
+        // 终点是对向偏移一个随机角度（也就是穿过屏幕到达另一端）
         const endAngle = randomStartAngle + Math.PI + (Math.random() - 0.5) * (Math.PI / 2);
         const endX = Math.cos(endAngle) * startRadius;
         const endY = Math.sin(endAngle) * startRadius;
@@ -128,7 +129,7 @@ export function KOBlessingStage() {
 
         // 计算持续时间（匀速：距离/速度）
         const distance = wrapper.position.distanceTo(targetPos);
-        const speed = 250; // 每秒游动的单位
+        const speed = 300; // 每秒游动的单位
         const duration = distance / speed;
 
         // 游向终点
@@ -137,9 +138,10 @@ export function KOBlessingStage() {
           y: targetPos.y,
           z: targetPos.z,
           duration: duration,
-          ease: 'none', // 保持匀速游动
+          delay: Math.random() * 2 + 1, // 重新入场前等待 1-3 秒
+          ease: 'power1.inOut', // 进出都有缓慢的加速减速，视觉上更平滑和自然
           onComplete: () => {
-            // 游出屏幕后重新发起下一次游动
+            // 游出屏幕外彻底隐藏后重置并开始新的游动
             swim();
           }
         });
