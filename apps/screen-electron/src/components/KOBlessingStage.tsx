@@ -55,35 +55,47 @@ export function KOBlessingStage() {
       const scale = targetSize / maxDim;
       whaleModel.scale.setScalar(scale);
 
-      // 将模型中心对齐到原点
-      whaleModel.position.x = -center.x * scale;
-      whaleModel.position.y = -center.y * scale;
-      whaleModel.position.z = -center.z * scale;
-      
       // 用一个 Group 包裹，以便我们在 Group 上做位移和动画
       const wrapper = new THREE.Group();
       wrapper.add(whaleModel);
       wrapperModel = wrapper;
 
-      // 修正朝向：识别叫 jon1 的骨骼/网格，并将其对齐到游动方向 (-Z轴)
+      // 修正朝向与中心：以骨骼节点 jon1 为控制和移动的基准基点 (pivot)
       wrapper.updateMatrixWorld(true);
-      const headPos = new THREE.Vector3();
-      let hasHead = false;
+      let jon1Node: THREE.Object3D | null = null;
       whaleModel.traverse((child) => {
-        if (child.name.toLowerCase().includes('jon1') && !hasHead) {
-          child.getWorldPosition(headPos);
-          hasHead = true;
+        if (child.name.toLowerCase().includes('jon1') && !jon1Node) {
+          jon1Node = child as THREE.Object3D;
         }
       });
 
-      if (hasHead) {
-        // 计算鱼头相对于模型中心（已经移至 wrapper 原点）的水平方向向量
+      if (jon1Node) {
+        // 先获取原本在世界坐标下鱼头(jon1)相对原本中心的朝向向量
+        const headPos = new THREE.Vector3();
+        (jon1Node as THREE.Object3D).getWorldPosition(headPos);
+        
+        // 计算原本鱼头在模型里的水面朝向
         const dir = headPos.clone().setY(0).normalize();
-        // wrapper.lookAt(0,0,0) 会将局部 -Z 轴指向朝前的移动方向
         const angle = Math.atan2(dir.x, dir.z);
-        // 修正：去掉 + Math.PI 确保鱼头确实朝前（如果头尾反了的话）
-        whaleModel.rotation.y = -angle;
-        console.log('检测到 jon1 鱼头，已自动修正在前进方向:', dir);
+        // +Math.PI 确保鱼头指向真正的 -Z 游动前进方向 (不再倒着游)
+        whaleModel.rotation.y = -angle + Math.PI;
+
+        // 重新更新因为旋转产生的新世界矩阵
+        wrapper.updateMatrixWorld(true);
+        (jon1Node as THREE.Object3D).getWorldPosition(headPos);
+
+        // 将模型平移，使得骨架节点 jon1 这个鱼头成为确切的几何原点(0,0,0)
+        // 这样一来，我们每次移动和施加 LookAt 到 wrapper 时，就是在直接“控制” jon1
+        whaleModel.position.x -= headPos.x;
+        whaleModel.position.y -= headPos.y;
+        whaleModel.position.z -= headPos.z;
+        
+        console.log('检测到 jon1 鱼头，已将其设为控制基点并修正头尾朝向');
+      } else {
+        // 如果没找到骨架节点，降级为普通的包围盒居中
+        whaleModel.position.x = -center.x * scale;
+        whaleModel.position.y = -center.y * scale;
+        whaleModel.position.z = -center.z * scale;
       }
 
       // 动画处理，找到闲置动画 'ani_bipedPreV01_dance001'
