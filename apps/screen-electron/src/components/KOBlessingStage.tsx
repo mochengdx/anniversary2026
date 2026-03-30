@@ -60,6 +60,26 @@ export function KOBlessingStage() {
       wrapper.add(whaleModel);
       wrapperModel = wrapper;
 
+      // 修正朝向：识别叫 jon1 的骨骼/网格，并将其对齐到游动方向 (-Z轴)
+      wrapper.updateMatrixWorld(true);
+      const headPos = new THREE.Vector3();
+      let hasHead = false;
+      whaleModel.traverse((child) => {
+        if (child.name.toLowerCase().includes('jon1') && !hasHead) {
+          child.getWorldPosition(headPos);
+          hasHead = true;
+        }
+      });
+
+      if (hasHead) {
+        // 计算鱼头相对于模型中心（已经移至 wrapper 原点）的水平方向向量
+        const dir = headPos.clone().setY(0).normalize();
+        // wrapper.lookAt(0,0,0) 会将局部 -Z 轴指向朝前的移动方向，因此我们要把鱼头对齐到 -Z 轴
+        const angle = Math.atan2(dir.x, dir.z);
+        whaleModel.rotation.y = -angle + Math.PI;
+        console.log('检测到 jon1 鱼头，已自动修正在前进方向:', dir);
+      }
+
       // 动画处理，找到闲置动画 'ani_bipedPreV01_dance001'
       if (gltf.animations && gltf.animations.length > 0) {
         mixer = new THREE.AnimationMixer(whaleModel);
