@@ -1081,7 +1081,7 @@ export function LotteryMarsStage({ users, blessingsCount, config = {} }: Props) 
         zIndex: 60
       }}>
         <QRCodeSVG 
-          value={localConfig.h5ClientUrl || `http://${localIP}:5173/?server=http://${localIP}:3000`}
+          value={`${localConfig.h5ClientUrl}&server=http://${localIP}:3000`  || `http://${localIP}:5173/?server=http://${localIP}:3000`}
           size={120} 
           bgColor="#ffffff" 
           fgColor="#000000" 

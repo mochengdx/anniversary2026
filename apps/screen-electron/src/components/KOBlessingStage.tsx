@@ -115,38 +115,66 @@ export function KOBlessingStage() {
       const visibleHeight = 2 * Math.tan(fov / 2) * camera.position.z;
       const visibleWidth = visibleHeight * camera.aspect;
 
-      // 让它从屏幕外极大范围进入，确保游出再出现的过程平滑不突兀
-      const startRadius = Math.max(visibleWidth, visibleHeight) * 0.5 + 1500; 
+      // 让它从屏幕外极大范围进入，只需一个稍大于屏幕的半径，防止消失时间过长
+      const startRadius = Math.max(visibleWidth, visibleHeight) * 0.5 + 500; 
       
       scene.add(wrapper);
 
+      // 保存每次游出时的终点和角度，下一次从原路附近回去
+      let lastTargetPos: THREE.Vector3 | null = null;
+      let lastEndAngle: number | null = null;
+
       // 定义无限游动逻辑
       const swim = () => {
-        // 随机生成起点（屏幕包围圈外远端）
-        const randomStartAngle = Math.random() * Math.PI * 2;
-        const startX = Math.cos(randomStartAngle) * startRadius;
-        const startY = Math.sin(randomStartAngle) * startRadius;
-        // z值增加一点随机景深，防止每次看起来大小一模一样，但不能太靠前或靠后导致剪裁
-        const startZ = -500 + (Math.random() - 0.5) * 500;
+        let startX, startY, startZ;
+        let randomStartAngle;
+
+        // 起点逻辑：如果是续接上次，从上次离开的地点开始；否则随机选个边
+        if (lastTargetPos && lastEndAngle !== null) {
+          startX = lastTargetPos.x;
+          startY = lastTargetPos.y;
+          startZ = lastTargetPos.z;
+          randomStartAngle = lastEndAngle;
+        } else {
+          randomStartAngle = Math.random() * Math.PI * 2;
+          startX = Math.cos(randomStartAngle) * startRadius;
+          startY = Math.sin(randomStartAngle) * startRadius;
+          startZ = -500 + (Math.random() - 0.5) * 400;
+        }
 
         // 终点是对向偏移一个随机角度（也就是穿过屏幕到达另一端）
         const endAngle = randomStartAngle + Math.PI + (Math.random() - 0.5) * (Math.PI / 2);
         const endX = Math.cos(endAngle) * startRadius;
         const endY = Math.sin(endAngle) * startRadius;
-        const endZ = startZ + (Math.random() - 0.5) * 200;
+        const endZ = -500 + (Math.random() - 0.5) * 400;
 
         // 放置到起点并面向终点
         wrapper.position.set(startX, startY, startZ);
         const targetPos = new THREE.Vector3(endX, endY, endZ);
         wrapper.lookAt(targetPos);
+        
+        // 清除上一轮旋转状态
+        wrapper.rotation.z = 0;
 
         // 计算持续时间（匀速：距离/速度）并加上 0.8 到 1.2 的系数浮动
         const distance = wrapper.position.distanceTo(targetPos);
-        const baseSpeed = 300; // 每秒游动的基准单位
+        const baseSpeed = 350; // 每秒游动的基准单位，从300稍微加快一点减少枯燥
         // 生成 0.8 到 1.2 之间的随机乘数
         const speedMultiplier = 0.8 + Math.random() * 0.4;
         const currentSpeed = baseSpeed * speedMultiplier;
         const duration = distance / currentSpeed;
+
+        // 同步修改动画骨骼速率（加入随机性）
+        if (mixer) {
+          mixer.timeScale = speedMultiplier;
+        }
+
+        // 判定是否“从下向上”（Y轴显著增加，作为飞跃水面的条件）
+        const isUpward = (targetPos.y - startY) > visibleHeight * 0.3;
+        // 如果是抬头向上的大幅游动，随机给 3 到 5 圈滚动
+        const rolls = isUpward ? Math.floor(Math.random() * 3) + 3 : 0;
+        
+        const delay = Math.random() * 0.5 + 0.2; // 让离场后等待时间极大缩短，不会觉得失踪太久
 
         // 游向终点
         gsap.to(wrapper.position, {
@@ -154,13 +182,33 @@ export function KOBlessingStage() {
           y: targetPos.y,
           z: targetPos.z,
           duration: duration,
-          delay: Math.random() * 2 + 1, // 重新入场前等待 1-3 秒
+          delay: delay,
           ease: 'power1.inOut', // 进出都有缓慢的加速减速，视觉上更平滑和自然
+          onUpdate: () => {
+             // 赋予骨骼速度波动感：随时间按正弦轻微脉动
+             if (mixer) {
+               mixer.timeScale = speedMultiplier + Math.sin(Date.now() / 200) * 0.3;
+             }
+          },
           onComplete: () => {
+            // 保存状态，下次从这里游回去
+            lastTargetPos = targetPos.clone();
+            lastEndAngle = endAngle;
             // 游出屏幕外彻底隐藏后重置并开始新的游动
             swim();
           }
         });
+
+        // 旋转动效
+        if (rolls > 0) {
+          // 在当前朝向的局部Z轴（前进轴）进行滚动
+          gsap.to(wrapper.rotation, {
+            z: Math.PI * 2 * rolls,
+            duration: duration,
+            delay: delay,
+            ease: 'power2.inOut',
+          });
+        }
       };
 
       // 启动自动循游
