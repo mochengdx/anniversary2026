@@ -8,6 +8,11 @@ export function KOBlessingStage() {
 
   useEffect(() => {
     if (!containerRef.current) return;
+    
+    // 清除可能因 StrictMode 导致的残留 canvas
+    if (containerRef.current.childNodes.length > 0) {
+      containerRef.current.innerHTML = '';
+    }
 
     const width = containerRef.current.clientWidth;
     const height = containerRef.current.clientHeight;
@@ -97,33 +102,51 @@ export function KOBlessingStage() {
       const visibleWidth = visibleHeight * camera.aspect;
 
       // 让它从屏幕边缘外进入
-      const startRadius = Math.max(visibleWidth, visibleHeight) * 0.8; 
-      const randomAngle = Math.random() * Math.PI * 2;
-      const startX = Math.cos(randomAngle) * startRadius;
-      const startY = Math.sin(randomAngle) * startRadius;
+      const startRadius = Math.max(visibleWidth, visibleHeight) * 0.7; 
       
-      wrapper.position.set(startX, startY, -500);
-      wrapper.lookAt(0, 0, 0);
-
       scene.add(wrapper);
 
-      // 上场动画
-      gsap.to(wrapper.position, {
-        x: 0,
-        y: 0,
-        z: 0,
-        duration: 5,
-        ease: 'power2.out',
-        onComplete: () => {
-          gsap.to(wrapper.position, {
-            y: "+=30",
-            duration: 2,
-            yoyo: true,
-            repeat: -1,
-            ease: "sine.inOut"
-          });
-        }
-      });
+      // 定义无限游动逻辑
+      const swim = () => {
+        // 随机生成起点（屏幕包围圈外）
+        const randomStartAngle = Math.random() * Math.PI * 2;
+        const startX = Math.cos(randomStartAngle) * startRadius;
+        const startY = Math.sin(randomStartAngle) * startRadius;
+        // z值增加一点随机景深，防止每次看起来大小一模一样
+        const startZ = -500 + (Math.random() - 0.5) * 300;
+
+        // 终点是对向偏移一个随机角度（也就是穿过屏幕的另一端）
+        const endAngle = randomStartAngle + Math.PI + (Math.random() - 0.5) * (Math.PI / 2);
+        const endX = Math.cos(endAngle) * startRadius;
+        const endY = Math.sin(endAngle) * startRadius;
+        const endZ = startZ + (Math.random() - 0.5) * 200;
+
+        // 放置到起点并面向终点
+        wrapper.position.set(startX, startY, startZ);
+        const targetPos = new THREE.Vector3(endX, endY, endZ);
+        wrapper.lookAt(targetPos);
+
+        // 计算持续时间（匀速：距离/速度）
+        const distance = wrapper.position.distanceTo(targetPos);
+        const speed = 250; // 每秒游动的单位
+        const duration = distance / speed;
+
+        // 游向终点
+        gsap.to(wrapper.position, {
+          x: targetPos.x,
+          y: targetPos.y,
+          z: targetPos.z,
+          duration: duration,
+          ease: 'none', // 保持匀速游动
+          onComplete: () => {
+            // 游出屏幕后重新发起下一次游动
+            swim();
+          }
+        });
+      };
+
+      // 启动自动循游
+      swim();
     });
 
     const clock = new THREE.Clock();
