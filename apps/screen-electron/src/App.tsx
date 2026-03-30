@@ -5,6 +5,7 @@ import { socket } from './socket.js';
 import { AlbumViewer } from './components/AlbumViewer.js';
 import { LotteryMarsStage } from './components/LotteryMarsStage.js';
 import { DanmakuOverlay } from './components/DanmakuOverlay.js';
+import { KOBlessingStage } from './components/KOBlessingStage.js';
 
 type ScreenMode = 'lottery' | 'game' | 'album' | 'ko';
 
@@ -97,12 +98,8 @@ export default function App() {
         <LotteryMarsStage users={lotteryUsers} blessingsCount={currentCategoryBlessings.length} />
       )}
 
-      {/* KO 祝福区域 (新增的空占位/或沿用此前的游戏界面，这里按要求加个KO祝福专属背景即可) */}
-      {mode === 'ko' && (
-        <div style={{ width: '100%', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-          <h1 style={{ fontSize: '4rem', color: '#fff', textShadow: '0 4px 20px rgba(0,0,0,0.5)' }}>KO 祝福墙</h1>
-        </div>
-      )}
+      {/* KO 祝福区域 */}
+      {mode === 'ko' && <KOBlessingStage />}
 
       {/* 游戏排行 (之前的老逻辑暂存，如果不玩游戏了可以移除，这里保留以免破坏老结构) */}
       {mode === 'game' && gameState && (
