@@ -77,8 +77,9 @@ export function KOBlessingStage() {
         // 计算原本鱼头在模型里的水面朝向
         const dir = headPos.clone().setY(0).normalize();
         const angle = Math.atan2(dir.x, dir.z);
-        // +Math.PI 确保鱼头指向真正的 -Z 游动前进方向 (不再倒着游)
-        whaleModel.rotation.y = -angle + Math.PI;
+        // 如果尾巴在前，说明朝向反了，去掉 + Math.PI 或者修改角度以确保其指向正确的方向。
+        // Math.atan2给出的角度是相对于Z轴的，调整为直接对准
+        whaleModel.rotation.y = -angle;
 
         // 重新更新因为旋转产生的新世界矩阵
         wrapper.updateMatrixWorld(true);
@@ -139,10 +140,13 @@ export function KOBlessingStage() {
         const targetPos = new THREE.Vector3(endX, endY, endZ);
         wrapper.lookAt(targetPos);
 
-        // 计算持续时间（匀速：距离/速度）
+        // 计算持续时间（匀速：距离/速度）并加上 0.8 到 1.2 的系数浮动
         const distance = wrapper.position.distanceTo(targetPos);
-        const speed = 300; // 每秒游动的单位
-        const duration = distance / speed;
+        const baseSpeed = 300; // 每秒游动的基准单位
+        // 生成 0.8 到 1.2 之间的随机乘数
+        const speedMultiplier = 0.8 + Math.random() * 0.4;
+        const currentSpeed = baseSpeed * speedMultiplier;
+        const duration = distance / currentSpeed;
 
         // 游向终点
         gsap.to(wrapper.position, {
