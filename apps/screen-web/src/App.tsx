@@ -9,23 +9,95 @@ import { KOBlessingStage } from './components/KOBlessingStage.js';
 
 type ScreenMode = 'lottery' | 'game' | 'album' | 'ko';
 
+const AVATARS = [
+  'https://mdn.alipayobjects.com/huamei_b5s5sy/afts/img/A*HfJHQ6LqG2QAAAAARSAAAAgAet58AQ/original',  
+  'https://mdn.alipayobjects.com/huamei_b5s5sy/afts/img/A*H5olTLPpQQkAAAAATEAAAAgAet58AQ/original',
+  'https://mdn.alipayobjects.com/huamei_b5s5sy/afts/img/A*61MXSpLhHMoAAAAAQlAAAAgAet58AQ/original',
+  'https://mdn.alipayobjects.com/huamei_b5s5sy/afts/img/A*ReoxQqecl8wAAAAARdAAAAgAet58AQ/original',
+  'https://mdn.alipayobjects.com/huamei_b5s5sy/afts/img/A*cdrPTYH2iEAAAAAARHAAAAgAet58AQ/original',
+  'https://mdn.alipayobjects.com/huamei_b5s5sy/afts/img/A*05SoSKPKvcQAAAAARzAAAAgAet58AQ/original',
+  'https://mdn.alipayobjects.com/huamei_b5s5sy/afts/img/A*UOfFRLxl810AAAAARNAAAAgAet58AQ/original',
+  'https://mdn.alipayobjects.com/huamei_b5s5sy/afts/img/A*mJYDToDk1osAAAAARYAAAAgAet58AQ/original'
+];
+
+
+
 export default function App() {
   const [mode, setMode] = useState<ScreenMode>('lottery');
   const [blessings, setBlessings] = useState<BlessingPayload[]>([]);
   const [lotteryUsers, setLotteryUsers] = useState<UserInfo[]>([]);
+  const [defaultUsers, setDefaultUsers] = useState<UserInfo[]>([]);
+  const [userProfiles, setUserProfiles] = useState<Record<string, UserInfo>>(() => {
+    try {
+      const cached = localStorage.getItem('mars_userProfiles');
+      return cached ? JSON.parse(cached) : {};
+    } catch { return {}; }
+  });
+  const [interactionStats, setInteractionStats] = useState<Record<string, { muyu: number; danmaku: number }>>(() => {
+    try {
+      const cached = localStorage.getItem('mars_interactionStats');
+      return cached ? JSON.parse(cached) : {};
+    } catch { return {}; }
+  });
   const [gameState, setGameState] = useState<GameStateTick | null>(null);
   const [muyus, setMuyus] = useState<{id: string; x: number; delta: number}[]>([]);
   const [userAnimations, setUserAnimations] = useState<{id: string; avatar: string}[]>([]);
 
   useEffect(() => {
+    localStorage.setItem('mars_interactionStats', JSON.stringify(interactionStats));
+  }, [interactionStats]);
+
+  useEffect(() => {
+    localStorage.setItem('mars_userProfiles', JSON.stringify(userProfiles));
+  }, [userProfiles]);
+
+  useEffect(() => {
+    // 加载默认用户数据
+    fetch('./user.json')
+      .then((res) => res.json())
+      .then((data: any[]) => {
+        if (Array.isArray(data)) {
+          const initUsers: UserInfo[] = data.map((item) => ({
+            userId: item.userId,
+            nickname: item.realName || `用户${item.userId.slice(-4)}`,
+            avatar: AVATARS[Math.floor(Math.random() * AVATARS.length)], // 提供一个默认头像
+          }));
+          setDefaultUsers(initUsers);
+        }
+      })
+      .catch((e) => console.error('Failed to load user.json:', e));
+
     // 祝福
     socket.on(SocketEvents.S2C_BROADCAST_BLESSING, (payload) => {
-      setBlessings((prev) => [...prev.slice(-300), payload]); // 增加历史缓存以防丢失，并展示最新的
+      setBlessings((prev) => [...prev.slice(-300), payload]); // 增加历史缓存以防丢失，并展示最新的      
+      setInteractionStats((prev) => ({
+        ...prev,
+        [payload.userId]: {
+          muyu: prev[payload.userId]?.muyu || 0,
+          danmaku: (prev[payload.userId]?.danmaku || 0) + 1,
+        }
+      }));
+
+      // 也将用户最新的头像和昵称同步到本地存档
+      setUserProfiles((prev) => ({
+        ...prev,
+        [payload.userId]: {
+          userId: payload.userId,
+          nickname: payload.nickname || prev[payload.userId]?.nickname || `用户${payload.userId.slice(-4)}`,
+          avatar: payload.avatar || prev[payload.userId]?.avatar || AVATARS[Math.floor(Math.random() * AVATARS.length)],
+        }
+      }));
     });
 
     socket.on(SocketEvents.S2C_LOTTERY_POOL_UPDATE, (payload) => {
-            console.log('S2C_LOTTERY_POOL_UPDATE:', payload);
-      setLotteryUsers(payload.participants);
+      console.log('S2C_LOTTERY_POOL_UPDATE:', payload);
+      // 单点更新优化：仅当长度不一致或为空时才做全量替换
+      setLotteryUsers(prev => {
+        if (prev.length !== payload.participants.length || prev.length === 0) {
+          return payload.participants;
+        }
+        return prev;
+      });
     });
 
     // 游戏状态
@@ -35,6 +107,32 @@ export default function App() {
 
     socket.on(SocketEvents.S2C_BROADCAST_USERINFO, (payload) => {
       console.log('S2C_BROADCAST_USERINFO:', payload);
+
+      const updateList = (prev: UserInfo[]) => {
+        const exists = prev.find((u) => u.userId === payload.userId);
+        if (exists) {
+          return prev.map((u) => {
+            if (u.userId === payload.userId) {
+              return {
+                ...u,
+                nickname: payload.nickname || `用户${payload.userId.slice(-4)}`,
+                avatar: payload.avatar,
+              };
+            }
+            return u;
+          });
+        } else {
+          return [...prev, {
+            userId: payload.userId,
+            nickname: payload.nickname || `用户${payload.userId.slice(-4)}`,
+            avatar: payload.avatar || AVATARS[Math.floor(Math.random() * AVATARS.length)],
+          }];
+        }
+      };
+
+      setDefaultUsers(updateList);
+      setLotteryUsers(updateList);
+
       setUserAnimations((prev) => [...prev, { id: Date.now() + Math.random().toString(), avatar: payload.avatar }]);
       setTimeout(() => {
         setUserAnimations((prev) => prev.slice(1));
@@ -43,13 +141,7 @@ export default function App() {
 
     socket.on(SocketEvents.S2C_BROADCAST_MUYU, (payload) => {
       console.log('S2C_BROADCAST_MUYU:', payload);
-      // 底部的木鱼漂浮飞行动画依然保留，但可以修改为“许愿+1”
-      setMuyus((prev) => [...prev, { id: Date.now() + Math.random().toString(), x: 10 + Math.random() * 80, delta: payload.muyuDelta || 1 }]);
-      setTimeout(() => {
-        setMuyus((prev) => prev.slice(1));
-      }, 2000);
-
-      // 发射同款弹幕，将消息内容定为“许愿 + 1”（其中1即count/muyuDelta）
+      // 发射同款弹幕，将消息内容定为“许愿 + count”
       const pseudoBlessing: BlessingPayload = {
         userId: payload.userId,
         avatar: payload.avatar,
@@ -59,6 +151,24 @@ export default function App() {
         category: payload.category || mode, // 挂靠在当前 mode 或者 payload 带过来的 tab 上
       };
       setBlessings((prev) => [...prev.slice(-300), pseudoBlessing]);
+
+      setInteractionStats((prev) => ({
+        ...prev,
+        [payload.userId]: {
+          muyu: (prev[payload.userId]?.muyu || 0) + (payload.muyuDelta || 1),
+          danmaku: prev[payload.userId]?.danmaku || 0,
+        }
+      }));
+
+      // 也将用户最新的头像和昵称同步到本地存档
+      setUserProfiles((prev) => ({
+        ...prev,
+        [payload.userId]: {
+          userId: payload.userId,
+          nickname: payload.nickname || prev[payload.userId]?.nickname || `用户${payload.userId.slice(-4)}`,
+          avatar: payload.avatar || prev[payload.userId]?.avatar || AVATARS[Math.floor(Math.random() * AVATARS.length)],
+        }
+      }));
     });
 
     return () => {
@@ -157,22 +267,6 @@ export default function App() {
       `}</style>
 
       {/* 木鱼动画层 */}
-      {muyus.map((m) => (
-        <div
-          key={m.id}
-          style={{
-            position: 'absolute',
-            left: `${m.x}%`,
-            bottom: '20%',
-            fontSize: '40px',
-            animation: 'floatUp 2s ease-out forwards',
-            pointerEvents: 'none',
-            zIndex: 9999,
-          }}
-        >
-          🐟 许愿+{m.delta}
-        </div>
-      ))}
       <style>{`
         @keyframes floatUp {
           0% { transform: translateY(0) scale(1); opacity: 1; }
@@ -182,7 +276,15 @@ export default function App() {
       
       {/* 抽奖 */}
       {mode === 'lottery' && (
-        <LotteryMarsStage users={lotteryUsers} blessingsCount={currentCategoryBlessings.length} />
+        <LotteryMarsStage 
+          users={(lotteryUsers.length > 0 ? lotteryUsers : defaultUsers).map(u => ({
+            ...u,
+            nickname: userProfiles[u.userId]?.nickname || u.nickname,
+            avatar: userProfiles[u.userId]?.avatar || u.avatar
+          }))} 
+          blessingsCount={currentCategoryBlessings.length}
+          interactionStats={interactionStats}
+        />
       )}
 
       {/* KO 祝福区域 */}

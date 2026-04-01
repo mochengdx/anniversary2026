@@ -6,7 +6,7 @@ import confetti from 'canvas-confetti';
 import { QRCodeSVG } from 'qrcode.react';
 import type { UserInfo } from '@pkg/shared-types';
 
-type LotteryState = 'IDLE' | 'COUNTDOWN' | 'SPINNING' | 'PAUSED' | 'STOPPING' | 'RESULT';
+type LotteryState = 'PRE_LOTTERY' | 'IDLE' | 'COUNTDOWN' | 'SPINNING' | 'PAUSED' | 'STOPPING' | 'RESULT';
 
 export interface PrizeConfig {
   id: string;
@@ -42,6 +42,7 @@ export interface DrawnRecord {
 interface Props {
   users: UserInfo[];
   blessingsCount: number;
+  interactionStats?: Record<string, { muyu: number; danmaku: number }>;
   config?: LotteryMarsConfig;
 }
 
@@ -79,7 +80,7 @@ function getDemoUsers(count = 120): UserInfo[] {
   }));
 }
 
-function createCardTexture(user: UserInfo, prizeName?: string): THREE.Texture {
+function createCardTexture(user: UserInfo, prizeName?: string, energy?: {weight: number, maxWeight: number}): THREE.Texture {
   const canvas = document.createElement('canvas');
   canvas.width = 256;
   canvas.height = 140;
@@ -114,7 +115,7 @@ function createCardTexture(user: UserInfo, prizeName?: string): THREE.Texture {
 
     ctx.fillStyle = '#C4B5FD';
     ctx.font = '14px sans-serif';
-    ctx.fillText(`ID: ${user.userId.slice(0, 4)}***`, 100, 90);
+    ctx.fillText(`ID: ***${user.userId.slice(-4)}`, 100, 90);
   } else {
     ctx.fillStyle = '#F5F3FF';
     ctx.font = 'bold 22px sans-serif';
@@ -122,27 +123,43 @@ function createCardTexture(user: UserInfo, prizeName?: string): THREE.Texture {
 
     ctx.fillStyle = '#C4B5FD';
     ctx.font = '16px sans-serif';
-    ctx.fillText(`ID: ${user.userId.slice(0, 4)}***`, 100, 90);
+    ctx.fillText(`ID: ***${user.userId.slice(-4)}`, 100, 90);
   }
 
   ctx.beginPath();
-  ctx.arc(58, 70, 34, 0, Math.PI * 2);
-  ctx.strokeStyle = '#FFFFFF';
-  ctx.lineWidth = 2;
-  ctx.stroke();
+    ctx.arc(58, 60, 34, 0, Math.PI * 2);
+    ctx.strokeStyle = '#FFFFFF';
+    ctx.lineWidth = 2;
+    ctx.stroke();
 
-  const tex = new THREE.CanvasTexture(canvas);
-  tex.colorSpace = THREE.SRGBColorSpace;
+    if (energy) {
+      const p = Math.min(1, Math.max(0, (energy.weight - 1) / (energy.maxWeight - 1 || 1)));
+      // Background bar
+      ctx.fillStyle = 'rgba(255, 255, 255, 0.2)';
+      ctx.fillRect(80, 105, 150, 14);
+      // Fill bar
+      let curColor = '#4ade80';
+      if (p > 0.5) curColor = '#facc15';
+      if (p >= 1) curColor = '#f87171'; // red meaning MAX ENERGY
+      ctx.fillStyle = curColor;
+      ctx.fillRect(80, 105, 150 * p, 14);
+      // Text
+      ctx.fillStyle = '#fff';
+      ctx.font = 'bold 10px sans-serif';
+      ctx.fillText(p >= 1 ? 'MAX LIMIT' : `UP: ${(p*100).toFixed(0)}%`, 84, 116);
+    }
 
-  const img = new Image();
-  img.crossOrigin = 'Anonymous';
-  img.onload = () => {
-    ctx.save();
-    ctx.beginPath();
-    ctx.arc(58, 70, 34, 0, Math.PI * 2);
-    ctx.clip();
-    ctx.drawImage(img, 24, 36, 68, 68);
-    ctx.restore();
+    const tex = new THREE.CanvasTexture(canvas);
+    tex.colorSpace = THREE.SRGBColorSpace;
+
+    const img = new Image();
+    img.crossOrigin = 'Anonymous';
+    img.onload = () => {
+      ctx.save();
+      ctx.beginPath();
+      ctx.arc(58, 60, 34, 0, Math.PI * 2);
+      ctx.clip();
+      ctx.drawImage(img, 24, 26, 68, 68);
     tex.needsUpdate = true;
   };
   img.src = user.avatar || FALLBACK_AVATAR;
@@ -251,7 +268,7 @@ function SettingsPrizeEditor({
   );
 }
 
-export function LotteryMarsStage({ users, blessingsCount, config = {} }: Props) {
+export function LotteryMarsStage({ users, blessingsCount, interactionStats = {}, config = {} }: Props) {
   const containerRef = useRef<HTMLDivElement>(null);
   const sceneRef = useRef<THREE.Scene | null>(null);
   const cameraRef = useRef<THREE.PerspectiveCamera | null>(null);
@@ -278,8 +295,8 @@ export function LotteryMarsStage({ users, blessingsCount, config = {} }: Props) 
   const replaceCardIdxRef = useRef<number>(0);
   const animRef = useRef<number | null>(null);
 
-  const [state, setState] = useState<LotteryState>('IDLE');
-  const stateRef = useRef<LotteryState>('IDLE');
+  const [state, setState] = useState<LotteryState>('PRE_LOTTERY');
+  const stateRef = useRef<LotteryState>('PRE_LOTTERY');
   
   const [countdown, setCountdown] = useState<number | null>(null);
   const [autoNextCount, setAutoNextCount] = useState<number | null>(null);
@@ -541,34 +558,74 @@ export function LotteryMarsStage({ users, blessingsCount, config = {} }: Props) 
     nextUserIdxRef.current = sourceUsers.length > limit ? limit : 0;
     replaceCardIdxRef.current = 0;
 
-    for (let i = 0; i < count; i++) {
-      const user = sourceUsers[i % sourceUsers.length];
-      const phi = Math.acos(1 - 2 * (i + 0.5) / count);
-      const theta = Math.PI * (1 + Math.sqrt(5)) * i;
-      
-      const x = radius * Math.cos(theta) * Math.sin(phi);
-      const y = radius * Math.sin(theta) * Math.sin(phi);
-      const z = radius * Math.cos(phi);
+      const cols = Math.ceil(Math.sqrt(count * 1.8));
+      const rows = Math.ceil(count / cols);
+      const w = 135 * dynamicScale;
+      const h = 75 * dynamicScale;
+      const startX = -((cols - 1) * w) / 2;
+      const startY = ((rows - 1) * h) / 2;
 
-      const texture = createCardTexture(user);
-      const mesh = new THREE.Mesh(
-        new THREE.PlaneGeometry(120, 65),
-        new THREE.MeshBasicMaterial({ map: texture, side: THREE.DoubleSide, transparent: true })
-      );
+      for (let i = 0; i < count; i++) {
+        const user = sourceUsers[i % sourceUsers.length];
+        
+        // Sphere calculations
+        const phi = Math.acos(1 - 2 * (i + 0.5) / count);
+        const theta = Math.PI * (1 + Math.sqrt(5)) * i;
+        const sx = radius * Math.cos(theta) * Math.sin(phi);
+        const sy = radius * Math.sin(theta) * Math.sin(phi);
+        const sz = radius * Math.cos(phi);
 
-      mesh.position.set(x, y, z);
-      mesh.lookAt(x * 2, y * 2, z * 2);
-      mesh.scale.set(dynamicScale, dynamicScale, dynamicScale);
-      mesh.userData = { user, baseScale: dynamicScale };
-      cardsRef.current.push(mesh);
-      planetGroupRef.current.add(mesh);
-    }
+        // Grid calculations
+        const r = Math.floor(i / cols);
+        const c = i % cols;
+        const gx = startX + c * w;
+        const gy = startY - r * h;
+        const gz = 350;
+
+        const maxW = 1 + 0.15 * sourceUsers.length / Math.max(1, localConfig.prizes?.[0]?.totalCount || 10);
+        const stats = interactionStats[user.userId] || { muyu: 0, danmaku: 0 };
+        const initWeight = 1 + 0.8 * Math.sqrt(stats.muyu) + 0.5 * Math.log2(1 + stats.danmaku);
+
+        const texture = createCardTexture(user, undefined, stateRef.current === 'PRE_LOTTERY' ? { weight: initWeight, maxWeight: maxW } : undefined);
+        const mesh = new THREE.Mesh(
+          new THREE.PlaneGeometry(120, 65),
+          new THREE.MeshBasicMaterial({ map: texture, side: THREE.DoubleSide, transparent: true })
+        );
+
+        // Define target orientations
+        const dummySphere = new THREE.Object3D();
+        dummySphere.position.set(sx, sy, sz);
+        dummySphere.lookAt(sx * 2, sy * 2, sz * 2);
+
+        const dummyGrid = new THREE.Object3D();
+        dummyGrid.position.set(gx, gy, gz);
+        // Grid cards face the camera (Z forward)
+        dummyGrid.lookAt(gx, gy, 10000);
+
+        if (stateRef.current === 'PRE_LOTTERY') {
+          mesh.position.copy(dummyGrid.position);
+          mesh.quaternion.copy(dummyGrid.quaternion);
+        } else {
+          mesh.position.copy(dummySphere.position);
+          mesh.quaternion.copy(dummySphere.quaternion);
+        }
+
+        mesh.scale.set(dynamicScale, dynamicScale, dynamicScale);
+        mesh.userData = { 
+          user, 
+          baseScale: dynamicScale,
+          spherePos: dummySphere.position.clone(),
+          sphereQuat: dummySphere.quaternion.clone(),
+          lastWeight: initWeight
+        };
+        cardsRef.current.push(mesh);
+        planetGroupRef.current.add(mesh);
+      }
   }, [sourceUsers, localConfig.radius, localConfig.displayCount]);
 
   useEffect(() => {
     const limit = localConfig.displayCount || 180;
     const intervalTime = localConfig.replaceInterval || 1000;
-    
     if (sourceUsers.length <= limit || cardsRef.current.length === 0) return;
 
     const interval = setInterval(() => {
@@ -600,6 +657,35 @@ export function LotteryMarsStage({ users, blessingsCount, config = {} }: Props) 
 
     return () => clearInterval(interval);
   }, [sourceUsers, localConfig.displayCount, localConfig.replaceInterval]);
+
+  // Update card textures dynamically during PRE_LOTTERY
+  useEffect(() => {
+    if (stateRef.current !== 'PRE_LOTTERY') return;
+    
+    // Default maxW approximation based on requirement: 15% increase limit given existing count
+    const maxW = 1 + 0.15 * sourceUsers.length / Math.max(1, localConfig.prizes?.[0]?.totalCount || 10);
+    
+    cardsRef.current.forEach(card => {
+       const user = card.userData.user;
+       if (!user) return;
+       const s = interactionStats[user.userId] || { muyu: 0, danmaku: 0 };
+       const newW = 1 + 0.8 * Math.sqrt(s.muyu) + 0.5 * Math.log2(1 + s.danmaku);
+       
+       // Update user data from sourceUsers if it has changed (avatar or nickname update)
+       const updatedUser = sourceUsers.find(u => u.userId === user.userId) || user;
+       const avatarChanged = updatedUser.avatar !== user.avatar;
+       const nicknameChanged = updatedUser.nickname !== user.nickname;
+
+       if (avatarChanged || nicknameChanged || Math.abs((card.userData.lastWeight || 1) - newW) > 0.05) {
+          card.userData.user = updatedUser;
+          card.userData.lastWeight = newW;
+          const material = card.material as THREE.MeshBasicMaterial;
+          if (material.map) material.map.dispose();
+          material.map = createCardTexture(updatedUser, undefined, { weight: newW, maxWeight: maxW });
+          material.needsUpdate = true;
+       }
+    });
+  }, [interactionStats, sourceUsers.length, localConfig.prizes]);
 
   const resetView = useCallback((onComplete?: () => void) => {
     if (!cameraRef.current || !planetGroupRef.current) {
@@ -657,7 +743,19 @@ export function LotteryMarsStage({ users, blessingsCount, config = {} }: Props) 
     setCurrentPrize(prizeMatch || null);
 
     const shuffled = [...cardsRef.current].sort(() => 0.5 - Math.random());
-    const selectedCards = shuffled.slice(0, Math.min(amountToDraw, shuffled.length));
+    const selectedCards: typeof cardsRef.current = [];
+    const usedIds = new Set<string>(drawnUserIds);
+    
+    for (const card of shuffled) {
+      if (selectedCards.length >= amountToDraw) break;
+      const u = card.userData.user;
+      if (!u) continue;
+      // 保证同一次抽奖中没有相同的人，并且以前中过奖的人不能再中
+      if (!usedIds.has(u.userId)) {
+        selectedCards.push(card);
+        usedIds.add(u.userId);
+      }
+    }
     
     setWinners(selectedCards.map(c => c.userData.user));
 
@@ -733,7 +831,8 @@ export function LotteryMarsStage({ users, blessingsCount, config = {} }: Props) 
       const gridW = cols * baseCardW;
       const gridH = rows * baseCardH;
 
-      const scaleFactor = Math.min(maxW / gridW, maxH / gridH, 2.5);
+      // 如果中奖人数超过2人，卡片大小固定，否则动态计算自适应
+      const scaleFactor = selectedCards.length > 2 ? 0.6 : Math.min(maxW / gridW, maxH / gridH, 2.5);
       
       const CARD_W = baseCardW * scaleFactor;
       const CARD_H = baseCardH * scaleFactor;
@@ -885,22 +984,6 @@ export function LotteryMarsStage({ users, blessingsCount, config = {} }: Props) 
           card.userData.origParent = null;
       }
     });
-
-    if (withCountdown) {
-      setState('COUNTDOWN');
-      let count = 3;
-      setCountdown(count);
-      const timer = setInterval(() => {
-        count -= 1;
-        setCountdown(count);
-        if (count <= 0) {
-          clearInterval(timer);
-          setCountdown(null);
-          setState('SPINNING');
-        }
-      }, 1000);
-      return;
-    }
 
     setState('SPINNING');
   }, [state]);
@@ -1060,9 +1143,7 @@ export function LotteryMarsStage({ users, blessingsCount, config = {} }: Props) 
         <div className="lottery-top-title">{currentPrize ? currentPrize.name : THEME_TEXT.title}</div>
         <div className="lottery-top-subtitle">{currentPrize?.item ? currentPrize.item : THEME_TEXT.subTitle}</div>
         <div className="lottery-top-meta">
-          <span>状态：{THEME_TEXT.status[state]}</span>
-          <span>抽奖池：{sourceUsers.length}</span>
-          <span>祝福：{blessingsCount}</span>
+            <span>状态：{state === 'PRE_LOTTERY' ? '充能准备中...' : THEME_TEXT.status[state as keyof typeof THEME_TEXT.status]}</span>
         </div>
       </div>
 
@@ -1081,13 +1162,13 @@ export function LotteryMarsStage({ users, blessingsCount, config = {} }: Props) 
         zIndex: 60
       }}>
         <QRCodeSVG 
-          value={`${localConfig.h5ClientUrl}&server=http://${localIP}:3000`  || `http://${localIP}:5173/?server=http://${localIP}:3000`}
+          value="https://render.alipay.com/p/yuyan/180020010001223647/lottery26.html?caprMode=sync&__webview_options__=transparentTitle%3Dalways&server=wss://2026part1.antdigital.dl.alipaydev.com&transports=websocket"
           size={120} 
           bgColor="#ffffff" 
           fgColor="#000000" 
           level="L" 
         />
-        <div style={{ color: '#fff', fontSize: '16px', fontWeight: 'bold' }}>支付宝扫码许愿（内网）</div>
+        <div style={{ color: '#fff', fontSize: '16px', fontWeight: 'bold' }}>支付宝扫码许愿</div>
       </div>
 
       {state === 'COUNTDOWN' && countdown !== null && (
@@ -1095,21 +1176,62 @@ export function LotteryMarsStage({ users, blessingsCount, config = {} }: Props) 
       )}
 
       {controlsVisible && (
+        <>
         <div className="lottery-control-bar">
           <button onClick={() => setShowSettings(true)}>⚙️ 设置</button>
-            <button onClick={() => state === 'RESULT' ? handleCloseResult(true) : handleStart(true)} disabled={state === 'SPINNING' || state === 'COUNTDOWN'}>
-            开始
-          </button>
-          <button onClick={handlePause} disabled={state !== 'SPINNING' && state !== 'PAUSED'}>
-            {state === 'PAUSED' ? '继续' : '暂停'}
-          </button>
-          <button onClick={stopLottery} disabled={state !== 'SPINNING' && state !== 'PAUSED'}>
-            停止
-          </button>
-          <button onClick={() => { setState('IDLE'); resetView(); }}>
-            重置视角
-          </button>
-        </div>
+            {state === 'PRE_LOTTERY' ? (
+              <></>
+            ) : (
+              <button onClick={() => state === 'RESULT' ? handleCloseResult(true) : handleStart(true)} disabled={state === 'SPINNING' || state === 'COUNTDOWN'}>
+                开始
+              </button>
+            )}
+            <button onClick={handlePause} disabled={state !== 'SPINNING' && state !== 'PAUSED'}>
+              {state === 'PAUSED' ? '继续' : '暂停'}
+            </button>
+            <button onClick={stopLottery} disabled={state !== 'SPINNING' && state !== 'PAUSED'}>
+              停止
+            </button>
+            <button onClick={() => { setState(state === 'PRE_LOTTERY' ? 'PRE_LOTTERY' : 'IDLE'); resetView(); }}>
+              重置视角
+            </button>
+          </div>
+          {state === 'PRE_LOTTERY' && (
+             <button 
+             onClick={() => {
+               setState('IDLE');
+               cardsRef.current.forEach(card => {
+                 if (card.userData.spherePos && card.userData.sphereQuat) {
+                   gsap.to(card.position, {
+                     x: card.userData.spherePos.x,
+                     y: card.userData.spherePos.y,
+                     z: card.userData.spherePos.z,
+                     duration: 1.5,
+                     ease: 'power2.inOut'
+                   });
+                   gsap.to(card.quaternion, {
+                     x: card.userData.sphereQuat.x,
+                     y: card.userData.sphereQuat.y,
+                     z: card.userData.sphereQuat.z,
+                     w: card.userData.sphereQuat.w,
+                     duration: 1.5,
+                     ease: 'power2.inOut',
+                     onComplete: () => {
+                       const material = card.material as THREE.MeshBasicMaterial;
+                       if (material.map) material.map.dispose();
+                       material.map = createCardTexture(card.userData.user); // Redraw without energy bar
+                       material.needsUpdate = true;
+                     }
+                   });
+                 }
+               });
+             }}
+             style={{ position: 'absolute', bottom: '40px', left: '50%', transform: 'translateX(-50%)', padding: '16px 40px', fontSize: '24px', borderRadius: '40px', background: 'linear-gradient(to right, #f59e0b, #d97706)', border: 'none', color: '#fff', fontWeight: 'bold', zIndex: 9999, cursor: 'pointer', boxShadow: '0 4px 15px rgba(0,0,0,0.5)' }}
+           >
+             🚀 升空入球 (点击进入抽奖)
+           </button>
+          )}
+        </>
       )}
 
       {state === 'RESULT' && winners.length > 0 && (
