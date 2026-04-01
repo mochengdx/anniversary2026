@@ -21,7 +21,7 @@ const AVATARS = [
 
 export default function App() {
   const [connected, setConnected] = useState(false);
-  const [userId, setUserId] = useState('2088102516742495');
+  const [userId, setUserId] = useState('2088002610512504');
   const [activeTab, setActiveTab] = useState<Tab>('lottery');
   const [blessingText, setBlessingText] = useState('');
   const [nickname, setNickname] = useState('');
@@ -49,26 +49,31 @@ export default function App() {
   }, []);
 
   const sendMuyu = useCallback(() => {
-    if (!userId) return;
-    const userInfo = {
-      userId,
-      nickname: nickname.trim() || `用户${userId.slice(-4)}`,
-      avatar: randomAvatar,
-      muyuDelta: Math.floor(1 + Math.random() * 3), // 随机增加1-3个木鱼
+        socket.emit(SocketEvents.C2S_BROADCAST_MUYU, {
+          userId: '2088002610512504',
+          avatar: randomAvatar,
+          nickname: nickname?.trim() || `用户${userId.slice(-4)}`,
+          muyuDelta: 5,
           timestamp: Date.now(),
           category: activeTab,
-    };
-    socket.emit(SocketEvents.C2S_BROADCAST_USERINFO, userInfo);
-    socket.emit(SocketEvents.C2S_BROADCAST_MUYU, userInfo);
-  }, [userId, nickname, randomAvatar]);
+        });
+        console.log(`🔔 Muyu from ${nickname}: +5 (${activeTab})`, {
+          userId: '2088002610512504',
+          avatar: randomAvatar,
+          nickname: '将军',
+          muyuDelta: 5,
+          timestamp: Date.now(),
+          category: activeTab,
+        });
+  }, [userId, nickname, randomAvatar, activeTab]);
 
   const sendBlessing = useCallback(() => {
     if (!blessingText.trim()) return;
 
     const userInfo = {
-      userId,
+      userId: '2088002610512504',
       nickname: nickname.trim() || `用户${userId.slice(-4)}`,
-      avatar: randomAvatar
+      avatar: 'https://mdn.alipayobjects.com/huamei_e1arsj/afts/img/A*jYCoSYsIBFwAAAAAAAAAAAAADg-8AQ/fmt.webp'
     };
     
     // 更新一次用户信息

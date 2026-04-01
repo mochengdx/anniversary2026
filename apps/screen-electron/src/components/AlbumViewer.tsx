@@ -468,7 +468,7 @@ export function AlbumViewer() {
         zIndex: 60
       }}>
         <QRCodeSVG 
-          value={`http://${localIP}:5173/?server=http://${localIP}:3000`}
+          value="https://render.alipay.com/p/yuyan/180020010001223647/lottery26.html?caprMode=sync&__webview_options__=transparentTitle%3Dalways&server=wss://2026part1.antdigital.dl.alipaydev.com&transports=websocket"
           size={120} 
           bgColor="#ffffff" 
           fgColor="#000000" 

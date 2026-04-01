@@ -1,0 +1,7 @@
+[
+  { "id": "prize-1", "name": "特等奖", "item": "神秘大奖", "totalCount": 1, "drawTurns": 1, "isActive": true },
+  { "id": "prize-2", "name": "一等奖", "item": "精美礼品", "totalCount": 3, "drawTurns": 1, "isActive": true },
+  { "id": "prize-3", "name": "二等奖", "item": "精美礼品", "totalCount": 5, "drawTurns": 1, "isActive": true },
+  { "id": "prize-4", "name": "三等奖", "item": "精美礼品", "totalCount": 10, "drawTurns": 2, "isActive": true },
+  { "id": "prize-5", "name": "参与奖", "item": "精美礼品", "totalCount": 50, "drawTurns": 5, "isActive": true }
+]

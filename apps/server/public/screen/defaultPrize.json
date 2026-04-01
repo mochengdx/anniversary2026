@@ -1,0 +1,34 @@
+[
+  {
+    "id": "thirdPrizeId",
+    "name": "三等奖",
+    "item": "精美瓷器",
+    "totalCount": 25,
+    "drawTurns": 5,
+    "isActive": true
+  },
+  {
+    "id": "secondPrizeId",
+    "name": "二等奖",
+    "item": "露菅套装",
+    "totalCount": 8,
+    "drawTurns": 2,
+    "isActive": true
+  },
+  {
+    "id": "firstPrizeId",
+    "name": "一等奖",
+    "item": "韶音耳机",
+    "totalCount": 4,
+    "drawTurns": 2,
+    "isActive": true
+  },
+  {
+    "id": "specialPrizeId",
+    "name": "特等奖",
+    "item": "碳纤维自行车",
+    "totalCount": 1,
+    "drawTurns": 1,
+    "isActive": true
+  }
+]

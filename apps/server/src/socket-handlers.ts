@@ -56,6 +56,7 @@ export function setupSocketHandlers(
     });
 
     socket.on(SocketEvents.C2S_BROADCAST_MUYU, (payload: MuyuPayload) => {
+      console.log(`🔔 Muyu from ${payload.nickname}: +${payload.muyuDelta} (${payload.category})` ,payload)  ;
       // 木鱼互动，广播给所有端
       io.emit(SocketEvents.S2C_BROADCAST_MUYU, payload);
     });
