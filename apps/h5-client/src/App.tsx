@@ -6,15 +6,22 @@ import { socket } from './socket.js';
 type Tab = 'lottery' | 'album' | 'ko';
 
 const AVATARS = [
-  'https://mdn.alipayobjects.com/huamei_b5qxsh/afts/img/A*2A-jQI_fR6YAAAAAAAAAAAAADrZ5AQ/original',
-  'https://mdn.alipayobjects.com/huamei_b5qxsh/afts/img/A*-fS0QL9QoZ8AAAAAAAAAAAAADrZ5AQ/original',
-  'https://mdn.alipayobjects.com/huamei_b5qxsh/afts/img/A*o3Z_RaZ2cysAAAAAAAAAAAAADrZ5AQ/original',
-  'https://mdn.alipayobjects.com/huamei_b5qxsh/afts/img/A*M_QNT5Tz4sAAAAAAAAAAAAAADrZ5AQ/original'
+  'https://mdn.alipayobjects.com/huamei_b5s5sy/afts/img/A*HfJHQ6LqG2QAAAAARSAAAAgAet58AQ/original',  
+  'https://mdn.alipayobjects.com/huamei_b5s5sy/afts/img/A*H5olTLPpQQkAAAAATEAAAAgAet58AQ/original',
+  'https://mdn.alipayobjects.com/huamei_b5s5sy/afts/img/A*H5olTLPpQQkAAAAATEAAAAgAet58AQ/original',
+  'https://mdn.alipayobjects.com/huamei_b5s5sy/afts/img/A*H5olTLPpQQkAAAAATEAAAAgAet58AQ/original',
+  'https://mdn.alipayobjects.com/huamei_b5s5sy/afts/img/A*61MXSpLhHMoAAAAAQlAAAAgAet58AQ/original',
+  'https://mdn.alipayobjects.com/huamei_b5s5sy/afts/img/A*61MXSpLhHMoAAAAAQlAAAAgAet58AQ/original',
+  'https://mdn.alipayobjects.com/huamei_b5s5sy/afts/img/A*ReoxQqecl8wAAAAARdAAAAgAet58AQ/original',
+  'https://mdn.alipayobjects.com/huamei_b5s5sy/afts/img/A*cdrPTYH2iEAAAAAARHAAAAgAet58AQ/original',
+  'https://mdn.alipayobjects.com/huamei_b5s5sy/afts/img/A*05SoSKPKvcQAAAAARzAAAAgAet58AQ/original',
+  'https://mdn.alipayobjects.com/huamei_b5s5sy/afts/img/A*UOfFRLxl810AAAAARNAAAAgAet58AQ/original',
+  'https://mdn.alipayobjects.com/huamei_b5s5sy/afts/img/A*mJYDToDk1osAAAAARYAAAAgAet58AQ/original'
 ];
 
 export default function App() {
   const [connected, setConnected] = useState(false);
-  const [userId, setUserId] = useState('');
+  const [userId, setUserId] = useState('2088102516742495');
   const [activeTab, setActiveTab] = useState<Tab>('lottery');
   const [blessingText, setBlessingText] = useState('');
   const [nickname, setNickname] = useState('');

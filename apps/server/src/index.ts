@@ -1,5 +1,7 @@
 import express from 'express';
-import { createServer } from 'http';
+import { createServer as createHttpServer } from 'http';
+import { createServer as createHttpsServer } from 'https';
+import fs from 'fs';
 import path from 'path';
 import { fileURLToPath } from 'url';
 import cors from 'cors';
@@ -29,10 +31,20 @@ app.get('/api/health', (_req, res) => {
   res.json({ status: 'ok', timestamp: Date.now() });
 });
 
-const httpServer = createServer(app);
+// 支持 HTTPS 配置
+let server;
+try {
+  const privateKey = fs.readFileSync(path.join(__dirname, '../certs/server.key'), 'utf8');
+  const certificate = fs.readFileSync(path.join(__dirname, '../certs/server.cert'), 'utf8');
+  server = createHttpsServer({ key: privateKey, cert: certificate }, app);
+  console.log('🔒 HTTPS certificates loaded successfully.');
+} catch (error) {
+  console.warn('⚠️  Could not load HTTPS certificates, falling back to HTTP. Please ensure certs/server.key and certs/server.cert exist.');
+  server = createHttpServer(app);
+}
 
 // Socket.io 服务端，强类型事件
-const io = new Server<ClientToServerEvents, ServerToClientEvents>(httpServer, {
+const io = new Server<ClientToServerEvents, ServerToClientEvents>(server, {
   cors: {
     origin: '*',
     methods: ['GET', 'POST'],
@@ -48,7 +60,8 @@ const gameManager = new GameManager();
 // 注册 Socket 事件处理
 setupSocketHandlers(io, gameManager);
 
-httpServer.listen(PORT, () => {
-  console.log(`🚀 Server running at http://localhost:${PORT}`);
-  console.log(`📡 Socket.io ready for connections`);
+server.listen(PORT, () => {
+  const protocol = server instanceof createHttpServer ? 'HTTP' : 'HTTPS';
+  console.log(`🚀 ${protocol} Server running at ${protocol.toLowerCase()}://localhost:${PORT}`);
+  console.log(`📡 Socket.io ready for connections over ${protocol}`);
 });

@@ -24,6 +24,7 @@ export default function App() {
     });
 
     socket.on(SocketEvents.S2C_LOTTERY_POOL_UPDATE, (payload) => {
+            console.log('S2C_LOTTERY_POOL_UPDATE:', payload);
       setLotteryUsers(payload.participants);
     });
 
@@ -33,6 +34,7 @@ export default function App() {
     });
 
     socket.on(SocketEvents.S2C_BROADCAST_USERINFO, (payload) => {
+      console.log('S2C_BROADCAST_USERINFO:', payload);
       setUserAnimations((prev) => [...prev, { id: Date.now() + Math.random().toString(), avatar: payload.avatar }]);
       setTimeout(() => {
         setUserAnimations((prev) => prev.slice(1));
@@ -40,6 +42,7 @@ export default function App() {
     });
 
     socket.on(SocketEvents.S2C_BROADCAST_MUYU, (payload) => {
+      console.log('S2C_BROADCAST_MUYU:', payload);
       setMuyus((prev) => [...prev, { id: Date.now() + Math.random().toString(), x: 10 + Math.random() * 80 }]);
       setTimeout(() => {
         setMuyus((prev) => prev.slice(1));
