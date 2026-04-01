@@ -22,6 +22,13 @@ export enum SocketEvents {
   // 系统
   S2C_CONNECTED = 's2c_connected',
   S2C_ERROR = 's2c_error',
+
+  // 新增互动
+  C2S_BROADCAST_USERINFO = 'c2s_broadcast_userinfo',
+  S2C_BROADCAST_USERINFO = 's2c_broadcast_userinfo',
+
+  C2S_BROADCAST_MUYU = 'c2s_broadcast_muyu',
+  S2C_BROADCAST_MUYU = 's2c_broadcast_muyu',
 }
 
 // ==========================================
@@ -99,6 +106,8 @@ export interface ServerToClientEvents {
   [SocketEvents.S2C_ENERGY_UPDATE]: (payload: EnergyUpdate) => void;
   [SocketEvents.S2C_CONNECTED]: (payload: { userId: string }) => void;
   [SocketEvents.S2C_ERROR]: (payload: { message: string }) => void;
+  [SocketEvents.S2C_BROADCAST_USERINFO]: (payload: UserInfo) => void;
+  [SocketEvents.S2C_BROADCAST_MUYU]: (payload: UserInfo) => void;
 }
 
 /** 客户端->服务端 事件映射 */
@@ -107,4 +116,6 @@ export interface ClientToServerEvents {
   [SocketEvents.C2S_GAME_ACTION]: (payload: GameActionPayload) => void;
   [SocketEvents.C2S_JOIN_GAME]: (payload: UserInfo) => void;
   [SocketEvents.C2S_JOIN_LOTTERY]: (payload: UserInfo) => void;
+  [SocketEvents.C2S_BROADCAST_USERINFO]: (payload: UserInfo) => void;
+  [SocketEvents.C2S_BROADCAST_MUYU]: (payload: UserInfo) => void;
 }

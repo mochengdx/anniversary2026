@@ -44,6 +44,21 @@ export function setupSocketHandlers(
     });
 
     // ===== 抽奖模块 =====
+    socket.on(SocketEvents.C2S_BROADCAST_USERINFO, (payload: UserInfo) => {
+      // 用户进入页面报名，加入抽奖并广播
+      gameManager.addLotteryParticipant(payload);
+      io.emit(SocketEvents.S2C_BROADCAST_USERINFO, payload);
+      io.emit(SocketEvents.S2C_LOTTERY_POOL_UPDATE, {
+        participants: gameManager.getLotteryParticipants(),
+        total: gameManager.getLotteryParticipants().length,
+      });
+    });
+
+    socket.on(SocketEvents.C2S_BROADCAST_MUYU, (payload: UserInfo) => {
+      // 木鱼互动，广播给所有端
+      io.emit(SocketEvents.S2C_BROADCAST_MUYU, payload);
+    });
+
     socket.on(SocketEvents.C2S_JOIN_LOTTERY, (payload: UserInfo) => {
       gameManager.addLotteryParticipant(payload);
       console.log(`🎰 Lottery join: ${payload.nickname}`);

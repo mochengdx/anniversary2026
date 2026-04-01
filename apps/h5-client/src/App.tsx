@@ -27,6 +27,11 @@ export default function App() {
     socket.on('disconnect', () => setConnected(false));
     socket.on(SocketEvents.S2C_CONNECTED, ({ userId: id }) => {
       setUserId(id);
+      socket.emit(SocketEvents.C2S_BROADCAST_USERINFO, {
+        userId: id,
+        nickname: nickname.trim() || `用户${id.slice(-4)}`,
+        avatar: randomAvatar
+      });
     });
 
     return () => {
@@ -36,13 +41,31 @@ export default function App() {
     };
   }, []);
 
+  const sendMuyu = useCallback(() => {
+    if (!userId) return;
+    const userInfo = {
+      userId,
+      nickname: nickname.trim() || `用户${userId.slice(-4)}`,
+      avatar: randomAvatar
+    };
+    socket.emit(SocketEvents.C2S_BROADCAST_USERINFO, userInfo);
+    socket.emit(SocketEvents.C2S_BROADCAST_MUYU, userInfo);
+  }, [userId, nickname, randomAvatar]);
+
   const sendBlessing = useCallback(() => {
     if (!blessingText.trim()) return;
 
-    const payload: BlessingPayload = {
+    const userInfo = {
       userId,
-      avatar: randomAvatar,
       nickname: nickname.trim() || `用户${userId.slice(-4)}`,
+      avatar: randomAvatar
+    };
+    
+    // 更新一次用户信息
+    socket.emit(SocketEvents.C2S_BROADCAST_USERINFO, userInfo);
+
+    const payload: BlessingPayload = {
+      ...userInfo,
       content: blessingText.trim(),
       timestamp: Date.now(),
       category: activeTab,
@@ -100,6 +123,9 @@ export default function App() {
             onChange={(e) => setBlessingText(e.target.value)}
             maxLength={200}
           />
+          <button className="btn-primary" onClick={sendMuyu} style={{ marginBottom: 10, background: '#ff9800' }}>
+            🐟 敲木鱼
+          </button>
           <button className="btn-primary" onClick={sendBlessing}>
             {sent ? '✅ 已发送！' : '🚀 发送消息'}
           </button>

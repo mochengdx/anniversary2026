@@ -1,5 +1,7 @@
 import express from 'express';
 import { createServer } from 'http';
+import path from 'path';
+import { fileURLToPath } from 'url';
 import cors from 'cors';
 import { Server } from 'socket.io';
 import type {
@@ -11,9 +13,16 @@ import { GameManager } from './game-manager.js';
 
 const PORT = Number(process.env.PORT) || 3000;
 
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
+
 const app = express();
 app.use(cors());
 app.use(express.json());
+
+// HTTP 健康检查
+app.use('/h5', express.static(path.join(__dirname, '../../public/h5')));
+app.use('/screen', express.static(path.join(__dirname, '../../public/screen')));
 
 // HTTP 健康检查
 app.get('/api/health', (_req, res) => {

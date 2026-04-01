@@ -14,6 +14,7 @@ export interface Album {
   desc: string;
   photos: Photo[];
   coverUrl?: string;
+  bgm?: string; // Add bgm property
 }
 
 type PlaybackSlide = 
@@ -33,8 +34,6 @@ export function AlbumViewer() {
       }).catch((err: any) => console.error('Failed to get local IP', err));
     }
   }, []);
-
-  const [bgmUrl, setBgmUrl] = useState<string>('./music.mp3');
 
   // Modals state
   const [isAlbumModalOpen, setIsAlbumModalOpen] = useState(false);
@@ -67,10 +66,14 @@ export function AlbumViewer() {
     }
   };
 
-  const handleSelectBgm = async () => {
+  const handleSelectBgm = async (e: React.MouseEvent, albumId: string) => {
+    e.stopPropagation();
     if (window.electronAPI && window.electronAPI.selectAudioFile) {
       const url = await window.electronAPI.selectAudioFile();
-      if (url) setBgmUrl(url);
+      if (url) {
+        const newAlbums = albums.map(a => a.id === albumId ? { ...a, bgm: url } : a);
+        saveAlbums(newAlbums);
+      }
     }
   };
 
@@ -117,12 +120,30 @@ export function AlbumViewer() {
     const files = await window.electronAPI.readAlbumFiles(dirPath);
     if (!files || files.length === 0) return;
 
-    const newPhotos: Photo[] = files.map((f: any) => ({
-      id: Date.now() + Math.random().toString(),
-      url: f.url,
-      path: f.path,
-      desc: ''
-    }));
+    const newPhotos: Photo[] = files.map((f: any) => {
+      // Extract description from filename (everything after '@' up to the dot)
+      let desc = '';
+      const nameParts = f.path ? f.path.split('/') : [];
+      let filename = nameParts.length > 0 ? nameParts[nameParts.length - 1] : '';
+      if (!filename && f.url) { // fallback parsing
+          const urlParts = f.url.split('/');
+          filename = urlParts[urlParts.length - 1];
+      }
+      
+      const atIndex = filename.indexOf('@');
+      if (atIndex !== -1) {
+        const afterAt = filename.substring(atIndex + 1);
+        const lastDot = afterAt.lastIndexOf('.');
+        desc = lastDot !== -1 ? afterAt.substring(0, lastDot) : afterAt;
+      }
+
+      return {
+        id: Date.now() + Math.random().toString(),
+        url: f.url,
+        path: f.path,
+        desc: desc
+      };
+    });
 
     const newAlbums = albums.map(a => {
       if (a.id === currentAlbumId) {
@@ -253,9 +274,6 @@ export function AlbumViewer() {
               <div className="album-header">
                 <h2>我的相册</h2>
                 <div style={{display:'flex', gap:'12px'}}>
-                  <button className="primary-btn" onClick={handleSelectBgm} style={{ padding: '10px 20px', background: 'rgba(255,255,255,0.15)', color: 'white', border: 'none', borderRadius: '8px', cursor: 'pointer' }}>
-                    ♫ 设置循环BGM
-                  </button>
                   <button className="btn-create-album" onClick={handleCreateAlbumClick}>
                     + 新建相册
                   </button>
@@ -286,8 +304,9 @@ export function AlbumViewer() {
                       <div style={{width:'100%', height:'180px', background:'rgba(255,255,255,0.1)', borderRadius:'8px', display:'flex', alignItems:'center', justifyContent:'center', marginBottom:'10px'}}>无照片</div>
                     )}
                     <div className="album-card-title">{album.name}</div>
-                    <div className="album-card-desc">{album.desc || '暂无描述'} ({album.photos?.length || 0}张)</div>
+                    <div className="album-card-desc">{album.desc || '暂无描述'} ({album.photos?.length || 0}张) {album.bgm && '🎵'}</div>
                     <div className="album-actions">
+                      <button onClick={(e) => handleSelectBgm(e, album.id)}>设BGM</button>
                       <button onClick={(e) => handleDeleteAlbum(e, album.id)}>删除相册</button>
                     </div>
                   </div>
@@ -309,6 +328,9 @@ export function AlbumViewer() {
                   </div>
                 </div>
                 <div style={{display:'flex', gap:'12px'}}>
+                  <button onClick={(e) => handleSelectBgm(e, currentAlbum.id)} style={{ padding: '10px 20px', background: 'rgba(255,255,255,0.15)', color: 'white', border: 'none', borderRadius: '8px', cursor: 'pointer' }}>
+                    🎵 设置BGM
+                  </button>
                   <button onClick={handleAddPhotos} style={{ padding: '10px 20px', background: 'rgba(255,255,255,0.15)', color: 'white', border: 'none', borderRadius: '8px', cursor: 'pointer' }}>
                     + 导入图片(选取文件夹)
                   </button>
@@ -455,7 +477,9 @@ export function AlbumViewer() {
         <div style={{ color: '#fff', fontSize: '16px', fontWeight: 'bold' }}>支付宝扫码发弹幕</div>
       </div>
 
-      {bgmUrl && <audio src={bgmUrl} loop autoPlay hidden />}
+      {viewMode === 'PLAY' && playSlide?.album?.bgm && (
+        <audio src={playSlide.album.bgm} loop autoPlay hidden />
+      )}
     </>
   );
 }

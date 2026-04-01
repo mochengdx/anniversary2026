@@ -14,6 +14,8 @@ export default function App() {
   const [blessings, setBlessings] = useState<BlessingPayload[]>([]);
   const [lotteryUsers, setLotteryUsers] = useState<UserInfo[]>([]);
   const [gameState, setGameState] = useState<GameStateTick | null>(null);
+  const [muyus, setMuyus] = useState<{id: string; x: number}[]>([]);
+  const [userAnimations, setUserAnimations] = useState<{id: string; avatar: string}[]>([]);
 
   useEffect(() => {
     // 祝福
@@ -30,10 +32,26 @@ export default function App() {
       setGameState(payload);
     });
 
+    socket.on(SocketEvents.S2C_BROADCAST_USERINFO, (payload) => {
+      setUserAnimations((prev) => [...prev, { id: Date.now() + Math.random().toString(), avatar: payload.avatar }]);
+      setTimeout(() => {
+        setUserAnimations((prev) => prev.slice(1));
+      }, 3000);
+    });
+
+    socket.on(SocketEvents.S2C_BROADCAST_MUYU, (payload) => {
+      setMuyus((prev) => [...prev, { id: Date.now() + Math.random().toString(), x: 10 + Math.random() * 80 }]);
+      setTimeout(() => {
+        setMuyus((prev) => prev.slice(1));
+      }, 2000);
+    });
+
     return () => {
       socket.off(SocketEvents.S2C_BROADCAST_BLESSING);
       socket.off(SocketEvents.S2C_LOTTERY_POOL_UPDATE);
       socket.off(SocketEvents.S2C_GAME_STATE_TICK);
+      socket.off(SocketEvents.S2C_BROADCAST_MUYU);
+      socket.off(SocketEvents.S2C_BROADCAST_USERINFO);
     };
   }, []);
 
@@ -93,6 +111,60 @@ export default function App() {
       {/* 弹幕浮层 (全局按类过滤) */}
       <DanmakuOverlay blessings={currentCategoryBlessings} mode={mode} />
 
+      {/* 入场飞行动画 */}
+      {userAnimations.map((u) => (
+        <img
+          key={u.id}
+          src={u.avatar}
+          alt=""
+          style={{
+            position: 'absolute',
+            left: '-100px',
+            bottom: '-100px',
+            width: 80,
+            height: 80,
+            borderRadius: '50%',
+            border: '4px solid #fff',
+            boxShadow: '0 0 15px rgba(255,255,255,0.8)',
+            animation: 'flyToPlanet 2s cubic-bezier(0.25, 1, 0.5, 1) forwards',
+            pointerEvents: 'none',
+            zIndex: 10000,
+          }}
+        />
+      ))}
+      <style>{`
+        @keyframes flyToPlanet {
+          0% { transform: translate(0, 0) scale(0.5); opacity: 0; }
+          20% { opacity: 1; transform: translate(25vw, -25vh) scale(1.5); }
+          80% { opacity: 1; transform: translate(50vw, -45vh) scale(2); }
+          100% { transform: translate(60vw, -60vh) scale(0); opacity: 0; }
+        }
+      `}</style>
+
+      {/* 木鱼动画层 */}
+      {muyus.map((m) => (
+        <div
+          key={m.id}
+          style={{
+            position: 'absolute',
+            left: `${m.x}%`,
+            bottom: '20%',
+            fontSize: '40px',
+            animation: 'floatUp 2s ease-out forwards',
+            pointerEvents: 'none',
+            zIndex: 9999,
+          }}
+        >
+          🐟 功德+1
+        </div>
+      ))}
+      <style>{`
+        @keyframes floatUp {
+          0% { transform: translateY(0) scale(1); opacity: 1; }
+          100% { transform: translateY(-300px) scale(1.5); opacity: 0; }
+        }
+      `}</style>
+      
       {/* 抽奖 */}
       {mode === 'lottery' && (
         <LotteryMarsStage users={lotteryUsers} blessingsCount={currentCategoryBlessings.length} />
