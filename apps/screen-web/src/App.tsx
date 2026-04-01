@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { SocketEvents } from '@pkg/shared-types';
 import type { BlessingPayload, GameStateTick, UserInfo } from '@pkg/shared-types';
 import { socket } from './socket.js';
@@ -71,7 +71,8 @@ export default function App() {
     socket.on(SocketEvents.S2C_BROADCAST_BLESSING, (payload) => {
       if (!payload || typeof payload.userId !== 'string') return;
       
-      setBlessings((prev) => [...prev.slice(-300), payload]); // 增加历史缓存以防丢失，并展示最新的      
+      const newBlessing = { ...payload, category: '*' }; // 强制标记为全局显示弹幕
+      setBlessings((prev) => [...prev.slice(-300), newBlessing]); // 增加历史缓存以防丢失，并展示最新的      
       setInteractionStats((prev) => ({
         ...prev,
         [payload.userId]: {
@@ -91,21 +92,23 @@ export default function App() {
       }));
 
       // 收到祝福时触发飞向中间动画
-      const animId = Date.now() + Math.random().toString();
-      setUserAnimations((prev) => [...prev, { id: animId, avatar: payload.avatar }]);
-      setTimeout(() => {
-        setUserAnimations((prev) => prev.filter(u => u.id !== animId));
-      }, 3000);
+      // const animId = Date.now() + Math.random().toString();
+      // setUserAnimations((prev) => [...prev, { id: animId, avatar: payload.avatar }]);
+      // setTimeout(() => {
+      //   setUserAnimations((prev) => prev.filter(u => u.id !== animId));
+      // }, 3000);
     });
 
     socket.on(SocketEvents.S2C_LOTTERY_POOL_UPDATE, (payload) => {
       console.log('S2C_LOTTERY_POOL_UPDATE:', payload);
       if (!payload || !Array.isArray(payload.participants)) return;
       
-      // 单点更新优化：仅当长度不一致或为空时才做全量替换
+      // 增量更新：仅添加当前列表中不存在的 userId
       setLotteryUsers(prev => {
-        if (prev.length !== payload.participants.length || prev.length === 0) {
-          return payload.participants;
+        const existingIds = new Set(prev.map(u => u.userId));
+        const newUsers = payload.participants.filter((u: any) => !existingIds.has(u.userId));
+        if (newUsers.length > 0) {
+          return [...prev, ...newUsers];
         }
         return prev;
       });
@@ -146,11 +149,11 @@ export default function App() {
       setDefaultUsers(updateList);
       setLotteryUsers(updateList);
 
-      const animId = Date.now() + Math.random().toString();
-      setUserAnimations((prev) => [...prev, { id: animId, avatar: payload.avatar }]);
-      setTimeout(() => {
-        setUserAnimations((prev) => prev.filter(u => u.id !== animId));
-      }, 3000);
+      // const animId = Date.now() + Math.random().toString();
+      // setUserAnimations((prev) => [...prev, { id: animId, avatar: payload.avatar }]);
+      // setTimeout(() => {
+      //   setUserAnimations((prev) => prev.filter(u => u.id !== animId));
+      // }, 3000);
     });
 
     socket.on(SocketEvents.S2C_BROADCAST_MUYU, (payload) => {
@@ -164,7 +167,8 @@ export default function App() {
         nickname: payload.nickname,
         content: `许愿 + ${payload.muyuDelta || 1}`,
         timestamp: payload.timestamp || Date.now(),
-        category: payload.category || mode, // 挂靠在当前 mode 或者 payload 带过来的 tab 上
+        // 强制挂靠在当前大屏的 mode，以便无论用户在哪个页面敲木鱼，大屏都能直接飘弹幕
+        category: '*', // 全局飘屏
       };
       setBlessings((prev) => [...prev.slice(-300), pseudoBlessing]);
 
@@ -186,7 +190,7 @@ export default function App() {
         }
       }));
 
-      // 木鱼消息同样触发飞向中间动画
+      //木鱼消息同样触发飞向中间动画
       const animId = Date.now() + Math.random().toString();
       setUserAnimations((prev) => [...prev, { id: animId, avatar: payload.avatar }]);
       setTimeout(() => {
@@ -217,6 +221,7 @@ export default function App() {
 
   // 根据当前模块过滤弹幕 (兼容老数据或未分类数据则都显示在 lottery 或者默认)
   const currentCategoryBlessings = blessings.filter(b => {
+    if (b.category === '*') return true; // 全局强行显示的弹幕
     if (!b.category) return mode === 'lottery'; // 之前的默认为抽奖
     if (mode === 'ko') return b.category === 'ko';
     if (mode === 'album') return b.category === 'album';
@@ -283,8 +288,8 @@ export default function App() {
       <style>{`
         @keyframes flyToPlanet {
           0% { transform: translate(0, 0) scale(0.5); opacity: 0; }
-          20% { opacity: 1; transform: translate(25vw, -25vh) scale(1.5); }
-          80% { opacity: 1; transform: translate(50vw, -45vh) scale(2); }
+          20% { opacity: 1; transform: translate(25vw, -25vh) scale(1); }
+          80% { opacity: 1; transform: translate(50vw, -45vh) scale(1.5); }
           100% { transform: translate(60vw, -60vh) scale(0); opacity: 0; }
         }
       `}</style>

@@ -428,7 +428,7 @@ export function LotteryMarsStage({ users, blessingsCount, interactionStats = {},
     sceneRef.current = scene;
 
     const initialRadius = localConfig.radius || 600;
-    const cameraZ = initialRadius * (1200 / 600); 
+    const cameraZ = initialRadius * (1200 / 420); 
 
     const camera = new THREE.PerspectiveCamera(60, container.clientWidth / container.clientHeight, 1, Math.max(5000, initialRadius * 10));
     camera.position.set(0, 0, cameraZ);
@@ -573,6 +573,58 @@ export function LotteryMarsStage({ users, blessingsCount, interactionStats = {},
   }, []);
 
   const sourceUserIds = useMemo(() => sourceUsers.map(u => u.userId).join(','), [sourceUsers]);
+
+  const prevUsersLengthRef = useRef(0);
+  useEffect(() => {
+    if (!planetGroupRef.current || cardsRef.current.length === 0) {
+      prevUsersLengthRef.current = sourceUsers.length;
+      return;
+    }
+    
+    // 1. 更新已存在用户的卡片头像和昵称 (静默替换材质)
+    const currentMap = new Map(sourceUsers.map(u => [u.userId, u]));
+    cardsRef.current.forEach(card => {
+      const u = card.userData.user;
+      if (u && currentMap.has(u.userId)) {
+        const updated = currentMap.get(u.userId);
+        if (updated && (updated.avatar !== u.avatar || updated.nickname !== u.nickname)) {
+          card.userData.user = updated;
+          const material = card.material as THREE.MeshBasicMaterial;
+          if (material.map) material.map.dispose();
+          material.map = createCardTexture(updated);
+          material.needsUpdate = true;
+        }
+      }
+    });
+
+    // 2. 如果是新增了用户（不需要整体重绘），动态替换当前场景内某张旧卡片
+    if (sourceUsers.length > prevUsersLengthRef.current && prevUsersLengthRef.current > 0) {
+      const prevLength = prevUsersLengthRef.current;
+      const newUsers = sourceUsers.slice(prevLength);
+      
+      newUsers.forEach((newUser) => {
+         const replaceIdx = replaceCardIdxRef.current % Math.max(1, cardsRef.current.length);
+         const mesh = cardsRef.current[replaceIdx];
+         if (mesh) {
+            mesh.userData.user = newUser;
+            const material = mesh.material as THREE.MeshBasicMaterial;
+            if (material.map) material.map.dispose();
+            material.map = createCardTexture(newUser);
+            material.needsUpdate = true;
+            
+            const baseScale = mesh.userData.baseScale || 1;
+            gsap.fromTo(mesh.scale, 
+              { x: 0.1, y: 0.1, z: 0.1 },
+              { x: baseScale, y: baseScale, z: baseScale, duration: 0.6, ease: 'back.out(1.5)' }
+            );
+
+            replaceCardIdxRef.current += 1;
+         }
+      });
+    }
+
+    prevUsersLengthRef.current = sourceUsers.length;
+  }, [sourceUsers, createCardTexture]);
 
   useEffect(() => {
     if (!planetGroupRef.current) return;
@@ -733,7 +785,7 @@ export function LotteryMarsStage({ users, blessingsCount, interactionStats = {},
     const p1 = gsap.to(cameraRef.current.position, {
       x: 0,
       y: 0,
-      z: (localConfig.radius || 600) * (1200 / 600),
+      z: (localConfig.radius || 600) * (1200 / 420),
       duration: 1.2,
       ease: 'power2.inOut',
       onUpdate: () => cameraRef.current?.lookAt(0, 0, 0),
@@ -852,7 +904,7 @@ export function LotteryMarsStage({ users, blessingsCount, interactionStats = {},
       const cols = Math.ceil(Math.sqrt(amountToDraw));
       const rows = Math.ceil(amountToDraw / cols);
       
-      const cameraZ = (localConfig.radius || 600) * (1200 / 600);
+      const cameraZ = (localConfig.radius || 600) * (1200 / 420);
       const targetZ = cameraZ - 400; 
 
       const fov = cameraRef.current?.fov || 60;
@@ -961,7 +1013,7 @@ export function LotteryMarsStage({ users, blessingsCount, interactionStats = {},
     gsap.to(cameraRef.current.position, {
       x: 0,
       y: 0,
-      z: (localConfig.radius || 600) * (750 / 600), 
+      z: (localConfig.radius || 600) * (750 / 420), 
       duration: 3.5,
       ease: 'power3.out',
       onUpdate: () => cameraRef.current?.lookAt(0, 0, 0),
