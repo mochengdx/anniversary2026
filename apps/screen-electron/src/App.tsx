@@ -69,6 +69,8 @@ export default function App() {
 
     // 祝福
     socket.on(SocketEvents.S2C_BROADCAST_BLESSING, (payload) => {
+      if (!payload || typeof payload.userId !== 'string') return;
+
       setBlessings((prev) => [...prev.slice(-300), payload]); // 增加历史缓存以防丢失，并展示最新的      
       setInteractionStats((prev) => ({
         ...prev,
@@ -98,6 +100,8 @@ export default function App() {
 
     socket.on(SocketEvents.S2C_LOTTERY_POOL_UPDATE, (payload) => {
       console.log('S2C_LOTTERY_POOL_UPDATE:', payload);
+      if (!payload || !Array.isArray(payload.participants)) return;
+
       // 单点更新优化：仅当长度不一致或为空时才做全量替换
       setLotteryUsers(prev => {
         if (prev.length !== payload.participants.length || prev.length === 0) {
@@ -109,11 +113,13 @@ export default function App() {
 
     // 游戏状态
     socket.on(SocketEvents.S2C_GAME_STATE_TICK, (payload) => {
+      if (!payload) return;
       setGameState(payload);
     });
 
     socket.on(SocketEvents.S2C_BROADCAST_USERINFO, (payload) => {
       console.log('S2C_BROADCAST_USERINFO11:', payload);
+      if (!payload || typeof payload.userId !== 'string') return;
 
       const updateList = (prev: UserInfo[]) => {
         const exists = prev.find((u) => u.userId === payload.userId);
@@ -149,6 +155,8 @@ export default function App() {
 
     socket.on(SocketEvents.S2C_BROADCAST_MUYU, (payload) => {
       console.log('S2C_BROADCAST_MUYU:', payload);
+      if (!payload || typeof payload.userId !== 'string') return;
+      
       // 发射同款弹幕，将消息内容定为“许愿 + count”
       const pseudoBlessing: BlessingPayload = {
         userId: payload.userId,
