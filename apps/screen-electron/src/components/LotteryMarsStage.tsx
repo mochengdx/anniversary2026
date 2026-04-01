@@ -427,8 +427,8 @@ export function LotteryMarsStage({ users, blessingsCount, interactionStats = {},
     const scene = new THREE.Scene();
     sceneRef.current = scene;
 
-    const initialRadius = localConfig.radius || 420;
-    const cameraZ = initialRadius * (1200 / 420); 
+    const initialRadius = localConfig.radius || 600;
+    const cameraZ = initialRadius * (1200 / 600); 
 
     const camera = new THREE.PerspectiveCamera(60, container.clientWidth / container.clientHeight, 1, Math.max(5000, initialRadius * 10));
     camera.position.set(0, 0, cameraZ);
@@ -586,7 +586,7 @@ export function LotteryMarsStage({ users, blessingsCount, interactionStats = {},
     });
     cardsRef.current = [];
 
-    const radius = localConfig.radius || 420;
+    const radius = localConfig.radius || 600;
     const limit = localConfig.displayCount || 180;
     const count = sourceUsers.length > 0 ? limit : 0;
 
@@ -733,7 +733,7 @@ export function LotteryMarsStage({ users, blessingsCount, interactionStats = {},
     const p1 = gsap.to(cameraRef.current.position, {
       x: 0,
       y: 0,
-      z: (localConfig.radius || 420) * (1200 / 420),
+      z: (localConfig.radius || 600) * (1200 / 600),
       duration: 1.2,
       ease: 'power2.inOut',
       onUpdate: () => cameraRef.current?.lookAt(0, 0, 0),
@@ -852,7 +852,7 @@ export function LotteryMarsStage({ users, blessingsCount, interactionStats = {},
       const cols = Math.ceil(Math.sqrt(amountToDraw));
       const rows = Math.ceil(amountToDraw / cols);
       
-      const cameraZ = (localConfig.radius || 420) * (1200 / 420);
+      const cameraZ = (localConfig.radius || 600) * (1200 / 600);
       const targetZ = cameraZ - 400; 
 
       const fov = cameraRef.current?.fov || 60;
@@ -961,7 +961,7 @@ export function LotteryMarsStage({ users, blessingsCount, interactionStats = {},
     gsap.to(cameraRef.current.position, {
       x: 0,
       y: 0,
-      z: (localConfig.radius || 420) * (750 / 420), 
+      z: (localConfig.radius || 600) * (750 / 600), 
       duration: 3.5,
       ease: 'power3.out',
       onUpdate: () => cameraRef.current?.lookAt(0, 0, 0),
@@ -1346,7 +1346,7 @@ export function LotteryMarsStage({ users, blessingsCount, interactionStats = {},
                 </div>
                 <div className="settings-field">
                   <label>星球半径:</label>
-                  <input type="number" defaultValue={localConfig.radius || 420} id="cfg_radius" />
+                  <input type="number" defaultValue={localConfig.radius || 600} id="cfg_radius" />
                 </div>
                 <div className="settings-field">
                   <label>显示卡片数:</label>
