@@ -123,12 +123,9 @@ function createCardTexture(user: UserInfo, prizeName?: string, energy?: {weight:
     { border: '#FFFFFF', background: '#22D3EE' },
     { border: '#FFFFFF', background: '#22D3EE' },
     { border: '#FFFFFF', background: '#04040F' },
-    { border: '#FFFFFF', background: '#A8B7D1' },
-    { border: '#FFFFFF', background: '#BFC4DE' },
-    { border: '#FFFFFF', background: '#C7BEEB' },
-    { border: '#FFFFFF', background: '#D7CFE2' },
-    { border: '#FFFFFF', background: '#A8A9CF' },
-    { border: '#FFFFFF', background: '#E3E6F2' },
+    { border: '#FFFFFF', background: '#2E4057' },
+    { border: '#FFFFFF', background: '#C1B398' },
+    { border: '#FFFFFF', background: '#8E7CA5' },
   ];
   let h = 0;
   const uid = user && user.userId ? String(user.userId) : '';
@@ -601,6 +598,8 @@ export function LotteryMarsStage({ users, blessingsCount, interactionStats = {},
     };
   }, []);
 
+  const sourceUserIds = useMemo(() => sourceUsers.map(u => u.userId).join(','), [sourceUsers]);
+
   useEffect(() => {
     if (!planetGroupRef.current) return;
 
@@ -674,7 +673,7 @@ export function LotteryMarsStage({ users, blessingsCount, interactionStats = {},
           mesh.quaternion.copy(dummySphere.quaternion);
         }
 
-        mesh.scale.set(dynamicScale, dynamicScale, dynamicScale); mesh.userData = { user, baseScale: dynamicScale, spherePos: dummySphere.position.clone(), sphereQuat: dummySphere.quaternion.clone(), lastWeight: initWeight }; cardsRef.current.push(mesh); planetGroupRef.current.add(mesh); } }, [sourceUsers, localConfig.radius, localConfig.displayCount]); useEffect(() => { const limit = localConfig.displayCount || 180; const intervalTime = localConfig.replaceInterval || 1000; if (sourceUsers.length <= limit || cardsRef.current.length === 0) return; const interval = setInterval(() => { if (stateRef.current !== 'IDLE') return; const replaceMesh = cardsRef.current[replaceCardIdxRef.current]; const nextUser = sourceUsers[nextUserIdxRef.current]; if (replaceMesh && nextUser) {
+        mesh.scale.set(dynamicScale, dynamicScale, dynamicScale); mesh.userData = { user, baseScale: dynamicScale, spherePos: dummySphere.position.clone(), sphereQuat: dummySphere.quaternion.clone(), lastWeight: initWeight }; cardsRef.current.push(mesh); planetGroupRef.current.add(mesh); } }, [sourceUserIds, localConfig.radius, localConfig.displayCount]); useEffect(() => { const limit = localConfig.displayCount || 180; const intervalTime = localConfig.replaceInterval || 1000; if (sourceUsers.length <= limit || cardsRef.current.length === 0) return; const interval = setInterval(() => { if (stateRef.current !== 'IDLE') return; const replaceMesh = cardsRef.current[replaceCardIdxRef.current]; const nextUser = sourceUsers[nextUserIdxRef.current]; if (replaceMesh && nextUser) {
         const material = replaceMesh.material as THREE.MeshBasicMaterial;
         if (material.map) material.map.dispose();
         
@@ -724,7 +723,7 @@ export function LotteryMarsStage({ users, blessingsCount, interactionStats = {},
           material.needsUpdate = true;
        }
     });
-  }, [interactionStats, sourceUsers.length, localConfig.prizes]);
+  }, [interactionStats, sourceUsers, localConfig.prizes]);
 
   const resetView = useCallback((onComplete?: () => void) => {
     if (!cameraRef.current || !planetGroupRef.current) {

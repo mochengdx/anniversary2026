@@ -87,6 +87,13 @@ export default function App() {
           avatar: payload.avatar || prev[payload.userId]?.avatar || AVATARS[Math.floor(Math.random() * AVATARS.length)],
         }
       }));
+
+      // 收到祝福时触发飞向中间动画
+      const animId = Date.now() + Math.random().toString();
+      setUserAnimations((prev) => [...prev, { id: animId, avatar: payload.avatar }]);
+      setTimeout(() => {
+        setUserAnimations((prev) => prev.filter(u => u.id !== animId));
+      }, 3000);
     });
 
     socket.on(SocketEvents.S2C_LOTTERY_POOL_UPDATE, (payload) => {
@@ -133,9 +140,10 @@ export default function App() {
       setDefaultUsers(updateList);
       setLotteryUsers(updateList);
 
-      setUserAnimations((prev) => [...prev, { id: Date.now() + Math.random().toString(), avatar: payload.avatar }]);
+      const animId = Date.now() + Math.random().toString();
+      setUserAnimations((prev) => [...prev, { id: animId, avatar: payload.avatar }]);
       setTimeout(() => {
-        setUserAnimations((prev) => prev.slice(1));
+        setUserAnimations((prev) => prev.filter(u => u.id !== animId));
       }, 3000);
     });
 
@@ -169,6 +177,13 @@ export default function App() {
           avatar: payload.avatar || prev[payload.userId]?.avatar || AVATARS[Math.floor(Math.random() * AVATARS.length)],
         }
       }));
+      
+      // 木鱼消息同样触发飞向中间动画
+      const animId = Date.now() + Math.random().toString();
+      setUserAnimations((prev) => [...prev, { id: animId, avatar: payload.avatar }]);
+      setTimeout(() => {
+        setUserAnimations((prev) => prev.filter(u => u.id !== animId));
+      }, 3000);
     });
 
     return () => {

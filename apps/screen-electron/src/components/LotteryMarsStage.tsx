@@ -572,6 +572,8 @@ export function LotteryMarsStage({ users, blessingsCount, interactionStats = {},
     };
   }, []);
 
+  const sourceUserIds = useMemo(() => sourceUsers.map(u => u.userId).join(','), [sourceUsers]);
+
   useEffect(() => {
     if (!planetGroupRef.current) return;
 
@@ -720,7 +722,7 @@ export function LotteryMarsStage({ users, blessingsCount, interactionStats = {},
           material.needsUpdate = true;
        }
     });
-  }, [interactionStats, sourceUsers.length, localConfig.prizes]);
+  }, [interactionStats, sourceUsers, localConfig.prizes]);
 
   const resetView = useCallback((onComplete?: () => void) => {
     if (!cameraRef.current || !planetGroupRef.current) {
