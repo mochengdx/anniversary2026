@@ -419,10 +419,10 @@ export function LotteryMarsStage({ users, blessingsCount, interactionStats = {},
   // }, [localConfig.usersUrl]);
 
   const sourceUsers = useMemo(() => {
-    let pool = [];
-    if (fetchedUsers.length > 0) pool = fetchedUsers;
+    let pool: UserInfo[] = [];
+    if (users.length > 0) pool = users;
     else if (users.length > 0) pool = users;
-    else pool = getDemoUsers();
+    else pool = users;
 
     // 过滤掉已经中奖的用户
     const filtered = pool.filter(u => !drawnUserIds.includes(u.userId));
@@ -430,8 +430,8 @@ export function LotteryMarsStage({ users, blessingsCount, interactionStats = {},
     
     // 如果全部中奖了，为了不让球空着，退回全量或空（这里选择全量兜底显示）
     return pool;
-  }, [users, fetchedUsers, drawnUserIds]);
-
+  }, [users, drawnUserIds]);
+  console.log('sourceUsers', sourceUsers, users);
   useEffect(() => {
     stateRef.current = state;
   }, [state]);

@@ -26,7 +26,6 @@ export default function App() {
   const [mode, setMode] = useState<ScreenMode>('lottery');
   const [blessings, setBlessings] = useState<BlessingPayload[]>([]);
   const [lotteryUsers, setLotteryUsers] = useState<UserInfo[]>([]);
-  const [defaultUsers, setDefaultUsers] = useState<UserInfo[]>([]);
   const [userProfiles, setUserProfiles] = useState<Record<string, UserInfo>>(() => {
     try {
       const cached = localStorage.getItem('mars_userProfiles');
@@ -62,7 +61,7 @@ export default function App() {
             nickname: item.realName || `用户${item.userId.slice(-4)}`,
             avatar: AVATARS[Math.floor(Math.random() * AVATARS.length)], // 提供一个默认头像
           }));
-          setDefaultUsers(initUsers);
+          setLotteryUsers(initUsers);
         }
       })
       .catch((e) => console.error('Failed to load user.json:', e));
@@ -145,8 +144,6 @@ export default function App() {
           }];
         }
       };
-
-      setDefaultUsers(updateList);
       setLotteryUsers(updateList);
 
       const animId = Date.now() + Math.random().toString();
@@ -305,7 +302,7 @@ export default function App() {
       {/* 抽奖 */}
       {mode === 'lottery' && (
         <LotteryMarsStage 
-          users={(lotteryUsers.length > 0 ? lotteryUsers : defaultUsers).map(u => ({
+          users={lotteryUsers.map(u => ({
             ...u,
             nickname: userProfiles[u.userId]?.nickname || u.nickname,
             avatar: userProfiles[u.userId]?.avatar || u.avatar

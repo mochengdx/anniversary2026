@@ -393,10 +393,10 @@ export function LotteryMarsStage({ users, blessingsCount, interactionStats = {},
   }, [localConfig.usersUrl]);
 
   const sourceUsers = useMemo(() => {
-    let pool = [];
+    let pool: UserInfo[] = [];
     if (fetchedUsers.length > 0) pool = fetchedUsers;
     else if (users.length > 0) pool = users;
-    else pool = getDemoUsers();
+    // else pool = getDemoUsers();
 
     // 过滤掉已经中奖的用户
     const filtered = pool.filter(u => !drawnUserIds.includes(u.userId));
