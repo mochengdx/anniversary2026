@@ -89,6 +89,17 @@ export interface LotteryPoolUpdate {
 }
 
 /** 用户信息 */
+/** 木鱼消息 */
+export interface MuyuPayload {
+  userId: string;
+  nickname: string;
+  avatar: string;
+  muyuDelta: number;
+  timestamp: number;
+  category: string;
+}
+
+/** 用户信息 */
 export interface UserInfo {
   userId: string;
   nickname: string;
@@ -107,7 +118,7 @@ export interface ServerToClientEvents {
   [SocketEvents.S2C_CONNECTED]: (payload: { userId: string }) => void;
   [SocketEvents.S2C_ERROR]: (payload: { message: string }) => void;
   [SocketEvents.S2C_BROADCAST_USERINFO]: (payload: UserInfo) => void;
-  [SocketEvents.S2C_BROADCAST_MUYU]: (payload: UserInfo) => void;
+  [SocketEvents.S2C_BROADCAST_MUYU]: (payload: MuyuPayload) => void;
 }
 
 /** 客户端->服务端 事件映射 */
@@ -117,5 +128,5 @@ export interface ClientToServerEvents {
   [SocketEvents.C2S_JOIN_GAME]: (payload: UserInfo) => void;
   [SocketEvents.C2S_JOIN_LOTTERY]: (payload: UserInfo) => void;
   [SocketEvents.C2S_BROADCAST_USERINFO]: (payload: UserInfo) => void;
-  [SocketEvents.C2S_BROADCAST_MUYU]: (payload: UserInfo) => void;
+  [SocketEvents.C2S_BROADCAST_MUYU]: (payload: MuyuPayload) => void;
 }

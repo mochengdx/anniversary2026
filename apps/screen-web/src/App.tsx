@@ -14,7 +14,7 @@ export default function App() {
   const [blessings, setBlessings] = useState<BlessingPayload[]>([]);
   const [lotteryUsers, setLotteryUsers] = useState<UserInfo[]>([]);
   const [gameState, setGameState] = useState<GameStateTick | null>(null);
-  const [muyus, setMuyus] = useState<{id: string; x: number}[]>([]);
+  const [muyus, setMuyus] = useState<{id: string; x: number; delta: number}[]>([]);
   const [userAnimations, setUserAnimations] = useState<{id: string; avatar: string}[]>([]);
 
   useEffect(() => {
@@ -43,10 +43,22 @@ export default function App() {
 
     socket.on(SocketEvents.S2C_BROADCAST_MUYU, (payload) => {
       console.log('S2C_BROADCAST_MUYU:', payload);
-      setMuyus((prev) => [...prev, { id: Date.now() + Math.random().toString(), x: 10 + Math.random() * 80 }]);
+      // 底部的木鱼漂浮飞行动画依然保留，但可以修改为“许愿+1”
+      setMuyus((prev) => [...prev, { id: Date.now() + Math.random().toString(), x: 10 + Math.random() * 80, delta: payload.muyuDelta || 1 }]);
       setTimeout(() => {
         setMuyus((prev) => prev.slice(1));
       }, 2000);
+
+      // 发射同款弹幕，将消息内容定为“许愿 + 1”（其中1即count/muyuDelta）
+      const pseudoBlessing: BlessingPayload = {
+        userId: payload.userId,
+        avatar: payload.avatar,
+        nickname: payload.nickname,
+        content: `许愿 + ${payload.muyuDelta || 1}`,
+        timestamp: payload.timestamp || Date.now(),
+        category: payload.category || mode, // 挂靠在当前 mode 或者 payload 带过来的 tab 上
+      };
+      setBlessings((prev) => [...prev.slice(-300), pseudoBlessing]);
     });
 
     return () => {
@@ -158,7 +170,7 @@ export default function App() {
             zIndex: 9999,
           }}
         >
-          🐟 功德+1
+          🐟 许愿+{m.delta}
         </div>
       ))}
       <style>{`

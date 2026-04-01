@@ -6,6 +6,7 @@ import {
   type BlessingPayload,
   type GameActionPayload,
   type UserInfo,
+  type MuyuPayload,
 } from '@pkg/shared-types';
 import { generateId } from '@pkg/utils';
 import type { GameManager } from './game-manager.js';
@@ -54,7 +55,7 @@ export function setupSocketHandlers(
       });
     });
 
-    socket.on(SocketEvents.C2S_BROADCAST_MUYU, (payload: UserInfo) => {
+    socket.on(SocketEvents.C2S_BROADCAST_MUYU, (payload: MuyuPayload) => {
       // 木鱼互动，广播给所有端
       io.emit(SocketEvents.S2C_BROADCAST_MUYU, payload);
     });

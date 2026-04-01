@@ -53,7 +53,10 @@ export default function App() {
     const userInfo = {
       userId,
       nickname: nickname.trim() || `用户${userId.slice(-4)}`,
-      avatar: randomAvatar
+      avatar: randomAvatar,
+      muyuDelta: Math.floor(1 + Math.random() * 3), // 随机增加1-3个木鱼
+          timestamp: Date.now(),
+          category: activeTab,
     };
     socket.emit(SocketEvents.C2S_BROADCAST_USERINFO, userInfo);
     socket.emit(SocketEvents.C2S_BROADCAST_MUYU, userInfo);
