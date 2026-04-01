@@ -80,6 +80,8 @@ function getDemoUsers(count = 120): UserInfo[] {
   }));
 }
 
+const gAvatarCache = new Map<string, HTMLImageElement>();
+
 function createCardTexture(user: UserInfo, prizeName?: string, energy?: {weight: number, maxWeight: number}): THREE.Texture {
   const canvas = document.createElement('canvas');
   canvas.width = 256;
@@ -92,8 +94,17 @@ function createCardTexture(user: UserInfo, prizeName?: string, energy?: {weight:
     { border: '#FFFFFF', background: '#22D3EE' },
     { border: '#FFFFFF', background: '#22D3EE' },
     { border: '#FFFFFF', background: '#04040F' },
+    { border: '#FFFFFF', background: '#A8B7D1' },
+    { border: '#FFFFFF', background: '#BFC4DE' },
+    { border: '#FFFFFF', background: '#C7BEEB' },
+    { border: '#FFFFFF', background: '#D7CFE2' },
+    { border: '#FFFFFF', background: '#A8A9CF' },
+    { border: '#FFFFFF', background: '#E3E6F2' },
   ];
-  const theme = themes[Math.floor(Math.random() * themes.length)];
+  let h = 0;
+  const uid = user && user.userId ? String(user.userId) : '';
+  for (let i = 0; i < uid.length; i++) h = Math.imul(31, h) + uid.charCodeAt(i) | 0;
+  const theme = themes[Math.abs(h) % themes.length];
 
   ctx.fillStyle = theme.background;
   ctx.strokeStyle = theme.border;
@@ -136,13 +147,22 @@ function createCardTexture(user: UserInfo, prizeName?: string, energy?: {weight:
       const p = Math.min(1, Math.max(0, (energy.weight - 1) / (energy.maxWeight - 1 || 1)));
       // Background bar
       ctx.fillStyle = 'rgba(255, 255, 255, 0.2)';
-      ctx.fillRect(80, 105, 150, 14);
+      ctx.beginPath();
+      if (ctx.roundRect) ctx.roundRect(80, 105, 150, 14, 7);
+      else ctx.rect(80, 105, 150, 14);
+      ctx.fill();
+      
       // Fill bar
       let curColor = '#4ade80';
       if (p > 0.5) curColor = '#facc15';
       if (p >= 1) curColor = '#f87171'; // red meaning MAX ENERGY
       ctx.fillStyle = curColor;
-      ctx.fillRect(80, 105, 150 * p, 14);
+      if (p > 0) {
+        ctx.beginPath();
+        if (ctx.roundRect) ctx.roundRect(80, 105, Math.max(14, 150 * p), 14, 7);
+        else ctx.rect(80, 105, 150 * p, 14);
+        ctx.fill();
+      }
       // Text
       ctx.fillStyle = '#fff';
       ctx.font = 'bold 10px sans-serif';
@@ -152,17 +172,32 @@ function createCardTexture(user: UserInfo, prizeName?: string, energy?: {weight:
     const tex = new THREE.CanvasTexture(canvas);
     tex.colorSpace = THREE.SRGBColorSpace;
 
-    const img = new Image();
-    img.crossOrigin = 'Anonymous';
-    img.onload = () => {
+    const src = user.avatar || FALLBACK_AVATAR;
+    const processImg = (img: HTMLImageElement) => {
       ctx.save();
       ctx.beginPath();
       ctx.arc(58, 60, 34, 0, Math.PI * 2);
       ctx.clip();
       ctx.drawImage(img, 24, 26, 68, 68);
-    tex.needsUpdate = true;
-  };
-  img.src = user.avatar || FALLBACK_AVATAR;
+      ctx.restore();
+      tex.needsUpdate = true;
+    };
+
+    if (gAvatarCache.has(src)) {
+      const cachedImg = gAvatarCache.get(src)!;
+      if (cachedImg.complete) {
+        processImg(cachedImg);
+        return tex; // Return immediately, avoids missing avatar flicker entirely
+      }
+    }
+
+    const img = new Image();
+    img.crossOrigin = 'Anonymous';
+    img.onload = () => {
+      gAvatarCache.set(src, img);
+      processImg(img);
+    };
+    img.src = src;
 
   return tex;
 }
@@ -582,7 +617,7 @@ export function LotteryMarsStage({ users, blessingsCount, interactionStats = {},
         const gy = startY - r * h;
         const gz = 350;
 
-        const maxW = 1 + 0.15 * sourceUsers.length / Math.max(1, localConfig.prizes?.[0]?.totalCount || 10);
+        const maxW = 1 + 0.30 * sourceUsers.length / Math.max(1, localConfig.prizes?.[0]?.totalCount || 10);
         const stats = interactionStats[user.userId] || { muyu: 0, danmaku: 0 };
         const initWeight = 1 + 0.8 * Math.sqrt(stats.muyu) + 0.5 * Math.log2(1 + stats.danmaku);
 
@@ -663,7 +698,7 @@ export function LotteryMarsStage({ users, blessingsCount, interactionStats = {},
     if (stateRef.current !== 'PRE_LOTTERY') return;
     
     // Default maxW approximation based on requirement: 15% increase limit given existing count
-    const maxW = 1 + 0.15 * sourceUsers.length / Math.max(1, localConfig.prizes?.[0]?.totalCount || 10);
+    const maxW = 1 + 0.30 * sourceUsers.length / Math.max(1, localConfig.prizes?.[0]?.totalCount || 10);
     
     cardsRef.current.forEach(card => {
        const user = card.userData.user;
