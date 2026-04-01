@@ -20,9 +20,9 @@ const app = express();
 app.use(cors());
 app.use(express.json());
 
-// HTTP 健康检查
-app.use('/h5', express.static(path.join(__dirname, '../../public/h5')));
-app.use('/screen', express.static(path.join(__dirname, '../../public/screen')));
+// 由于编译后放在 dist 目录，往上跳一层就是 app/server，再进入 public
+app.use('/h5', express.static(path.join(__dirname, '../public/h5')));
+app.use('/screen', express.static(path.join(__dirname, '../public/screen')));
 
 // HTTP 健康检查
 app.get('/api/health', (_req, res) => {
